@@ -274,9 +274,6 @@ for pos in range(len(Positions)):
                 for health in range(len(Health)):
                     state_1 = State(0, health, arrow, mat, mmst, pos)
                     state_1.actions.append(Action(Actions.STAY))
-                    if state_1.pos == Positions.N:
-                        state_1.actions.append(Action(Actions.DOWN))
-                        state_1.actions.append(Action(Actions.CRAFT))
                     if state_1.pos == Positions.C:
                         state_1.actions.append(Action(Actions.DOWN))
                         state_1.actions.append(Action(Actions.UP))
@@ -284,6 +281,9 @@ for pos in range(len(Positions)):
                         state_1.actions.append(Action(Actions.RIGHT))
                         state_1.actions.append(Action(Actions.HIT))
                         state_1.actions.append(Action(Actions.SHOOT))
+                    if state_1.pos == Positions.N:
+                        state_1.actions.append(Action(Actions.DOWN))
+                        state_1.actions.append(Action(Actions.CRAFT))
                     if state_1.pos == Positions.S:
                         state_1.actions.append(Action(Actions.UP))
                         state_1.actions.append(Action(Actions.GATHER))
@@ -302,4 +302,5 @@ for pos in range(len(Positions)):
 vi.states = states_init
 
 for _ in range(1000):
-    vi.iterate()
+    if vi.iterate() == -1:
+        break
