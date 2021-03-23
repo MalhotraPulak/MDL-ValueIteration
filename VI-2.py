@@ -84,9 +84,9 @@ class ValueIteration:
         for state in deepcopy(self.states):
             action_values = [self.action_value(action, state) for action in state.actions]
             state.value = max(action_values)
-            print(state, ":", state.actions[action_values.index(state.value)].type.name,
-                  "[{:0.2f}]".format(state.value),
-                  end="\n")
+            # print(state, ":", state.actions[action_values.index(state.value)].type.name,
+            #       "[{:0.2f}]".format(state.value),
+            #       end="\n")
             new_states.append(state)
         stop = True
         total_diff = 0
@@ -249,14 +249,20 @@ class ValueIteration:
             reward = 0
             if got_hit == idx:
                 reward = -30
-            value += result[0] * (STEP_COST + reward + self.getvalue(result[1]))
+            # print("value is " + str(self.getvalue(result[1])))
+            STEP = STEP_COST
+            if action.type == Actions.STAY:
+                STEP = 0
+            value += result[0] * (STEP + reward + GAMMA * self.getvalue(result[1]))
         return value
 
     def getvalue(self, result):
-        for state in self.states:
-            if state.get_info() == result:
-                return state.value
-        return None
+        # print(result)
+        idx = result[POSITION].value * (len(Materials) * len(Arrows) * len(MMState) * len(Health)) + result[
+            MATERIALS].value * (len(Arrows) * len(MMState) * len(Health)) + result[ARROWS].value * len(MMState) * len(
+            Health) + result[MMSTATE].value * len(Health) + result[HEALTH].value
+        assert(self.states[idx].get_info() == result)
+        return self.states[idx].value
 
     def __str__(self):
         s = ""
