@@ -84,9 +84,9 @@ class ValueIteration:
         for state in deepcopy(self.states):
             action_values = [self.action_value(action, state) for action in state.actions]
             state.value = max(action_values)
-            # print(state, ":", state.actions[action_values.index(state.value)].type.name,
-            #       "[{:0.2f}]".format(state.value),
-            #       end="\n")
+            print(state, ":", state.actions[action_values.index(state.value)].type.name,
+                  "[{:0.2f}]".format(state.value),
+                  end="\n")
             new_states.append(state)
         stop = True
         total_diff = 0
@@ -227,12 +227,14 @@ class ValueIteration:
             for result in results:
                 final_results.append((0.5 * result[0], result[1]))  # MM just remains ready
             if state.get_info()[POSITION] == Positions.C or state.get_info()[POSITION] == Positions.E:
-                # attack and got hit
-                un_result = results[0]
-                new_state = un_result[1]
-                new_state[MMSTATE] = MMState.D
-                got_hit = len(final_results)
-                final_results.append((0.5, deepcopy(new_state)))
+
+                un_result = results[0]  # get unsuccessful action
+                new_state = un_result[1]  # get the new state for unsuccessful action
+                new_state[MMSTATE] = MMState.D  # new MM state is dormant
+                new_state[ARROWS] = Arrows.A_0  # new Arrow state is 0
+                new_state[HEALTH] = Health(min(new_state[HEALTH].value + 1, len(Health) - 1))  # new health state is + 25
+                got_hit = len(final_results)  # index of action where you got hit
+                final_results.append((0.5, deepcopy(new_state)))  # this new state has 0.5 probability
             else:
                 for result in results:
                     result_state = deepcopy(result[1])
@@ -251,6 +253,7 @@ class ValueIteration:
                 reward = -30
             # print("value is " + str(self.getvalue(result[1])))
             STEP = STEP_COST
+            # for the other task
             if action.type == Actions.STAY:
                 STEP = 0
             value += result[0] * (STEP + reward + GAMMA * self.getvalue(result[1]))
@@ -261,7 +264,7 @@ class ValueIteration:
         idx = result[POSITION].value * (len(Materials) * len(Arrows) * len(MMState) * len(Health)) + result[
             MATERIALS].value * (len(Arrows) * len(MMState) * len(Health)) + result[ARROWS].value * len(MMState) * len(
             Health) + result[MMSTATE].value * len(Health) + result[HEALTH].value
-        assert(self.states[idx].get_info() == result)
+        assert (self.states[idx].get_info() == result)
         return self.states[idx].value
 
     def __str__(self):
@@ -307,6 +310,6 @@ for pos in range(len(Positions)):
 
 vi.states = states_init
 
-for _ in range(1000):
+for _ in range(100):
     if vi.iterate() == -1:
         break
