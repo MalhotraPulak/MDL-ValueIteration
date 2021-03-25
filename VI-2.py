@@ -2,6 +2,7 @@ from copy import deepcopy
 from enum import Enum
 from typing import List
 import random
+import json
 
 HEALTH = "HEALTH"
 POSITION = "POSITION"
@@ -83,9 +84,9 @@ class ValueIteration:
             action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
-            print(state, ":", state.favoured_action.name,
-                  "[{:0.2f}]".format(state.value),
-                  end="\n")
+            # print(state, ":", state.favoured_action.name,
+            #       "[{:0.2f}]".format(state.value),
+            #       end="\n")
             new_states.append(state)
         stop = True
         total_diff = 0
@@ -183,6 +184,7 @@ class ValueIteration:
                 new_state_info[POSITION] = Positions.S
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.GATHER:
+                # this might be wrong
                 results.append((0.25, deepcopy(new_state_info)))
                 new_state_info[MATERIALS] = Materials(min(new_state_info[MATERIALS].value + 1, len(Materials) - 1))
                 results.append((0.75, deepcopy(new_state_info)))
@@ -198,7 +200,7 @@ class ValueIteration:
             elif action == Actions.SHOOT:
                 results = []
                 if state.get_info()[ARROWS].value > 0:
-                    new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value)
+                    new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.1, deepcopy(new_state_info)))
                     new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
                     results.append((0.9, deepcopy(new_state_info)))
@@ -206,9 +208,9 @@ class ValueIteration:
                     results.append((1.0, deepcopy(new_state_info)))
 
             elif action == Actions.HIT:
-                results.append((0.2, deepcopy(new_state_info)))
+                results.append((0.8, deepcopy(new_state_info)))  # miss with high prob
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
-                results.append((0.8, deepcopy(new_state_info)))
+                results.append((0.2, deepcopy(new_state_info)))  # hit
 
         elif state.pos == Positions.W:
             if action == Actions.RIGHT:
@@ -243,7 +245,7 @@ class ValueIteration:
             if state.get_info()[POSITION] == Positions.C or state.get_info()[POSITION] == Positions.E:
 
                 un_result = results[0]  # get unsuccessful action
-                new_state = un_result[1]  # get the new state for unsuccessful action
+                new_state = deepcopy(un_result[1])  # get the new state for unsuccessful action
                 new_state[MMSTATE] = MMState.D  # new MM state is dormant
                 new_state[ARROWS] = Arrows.A_0  # new Arrow state is 0
                 new_state[HEALTH] = Health(
@@ -274,30 +276,56 @@ class ValueIteration:
             value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
         return value, final_results
 
-    def getState(self, result) -> State:
+    def getIdx(self, info):
+        idx = info[POSITION].value * (len(Materials) * len(Arrows) * len(MMState) * len(Health)) + info[
+            MATERIALS].value * (len(Arrows) * len(MMState) * len(Health)) + info[ARROWS].value * len(MMState) * len(
+            Health) + info[MMSTATE].value * len(Health) + info[HEALTH].value
+        return idx
+
+    def getState(self, info) -> State:
         # print(result)
-        idx = result[POSITION].value * (len(Materials) * len(Arrows) * len(MMState) * len(Health)) + result[
-            MATERIALS].value * (len(Arrows) * len(MMState) * len(Health)) + result[ARROWS].value * len(MMState) * len(
-            Health) + result[MMSTATE].value * len(Health) + result[HEALTH].value
-        assert (self.states[idx].get_info() == result)
+        idx = self.getIdx(info)
+        assert (self.states[idx].get_info() == info)
         return self.states[idx]
 
     def simulate(self, init_state):
         current_state = self.getState(init_state.get_info())
-        print(current_state, current_state.favoured_action)
+        print("Now:", current_state, current_state.favoured_action)
         while current_state.health.value != 0:
             optimal_action = current_state.favoured_action
             possible_outcomes = self.action_value(optimal_action, current_state)[1]
             # print(optimal_action, current_state, possible_outcomes)
             actual_outcome = random.random()
             total_prob = 0
-            for outcome in possible_outcomes:
+            for out in possible_outcomes:
+                print("{:0.2f}".format(out[0]), self.getState(out[1]))
+            for idx, outcome in enumerate(possible_outcomes):
                 total_prob += outcome[0]
                 if total_prob > actual_outcome:
-                    print("Happened", actual_outcome, outcome[1])
                     current_state = self.getState(outcome[1])
+                    print("Selected Outcome:", idx, "Rolled", "{:0.2f}".format(actual_outcome))
                     print(current_state, current_state.favoured_action)
                     break
+
+    def train(self):
+        while self.iterate() != -1:
+            pass
+        self.dump_states()
+
+    def dump_states(self):
+        with open("trained_states.txt", "w") as f:
+            sts = []
+            for idx, state in enumerate(self.states):
+                sts.append({"id": idx, "action": state.favoured_action.value, "value": state.value})
+            json.dump(sts, f)
+
+    def load_states(self):
+        with open("trained_states.txt", "r") as f:
+            sts = json.load(f)
+            for a_state in sts:
+                ste = self.states[a_state["id"]]
+                ste.value = a_state["value"]
+                ste.favoured_action = Actions(a_state["action"])
 
     def __str__(self):
         s = ""
@@ -342,9 +370,8 @@ for pos in range(len(Positions)):
 
 vi.states = states_init
 
-for _ in range(100):
-    if vi.iterate() == -1:
-        break
+# vi.train()
+vi.load_states()
 
 total: List[float] = [0, 0, 0, 0, 0]
 for st in vi.states:
@@ -355,6 +382,8 @@ for i in range(len(Positions)):
     print(Positions(i))
 print(total)
 
-initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
+# initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
+#                       health=Health.H_100.value)
+initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
                       health=Health.H_100.value)
 vi.simulate(initial_state)
