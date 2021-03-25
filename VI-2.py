@@ -107,26 +107,32 @@ class ValueIteration:
         if action == Actions.NONE:
             return state.value, []
         if state.pos == Positions.C:
-            # failed case for movements
-            new_state_info[POSITION] = Positions.E
-            results.append((0.15, deepcopy(new_state_info)))
             if action == Actions.UP:
+                new_state_info[POSITION] = Positions.E
+                results.append((0.15, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.N
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.DOWN:
+                new_state_info[POSITION] = Positions.E
+                results.append((0.15, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.S
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.LEFT:
+                new_state_info[POSITION] = Positions.E
+                results.append((0.15, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.W
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.RIGHT:
                 new_state_info[POSITION] = Positions.E
+                results.append((0.15, deepcopy(new_state_info)))
+                new_state_info[POSITION] = Positions.E
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.STAY:
+                new_state_info[POSITION] = Positions.E
+                results.append((0.15, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.C
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
-                results = []
                 if state.get_info()[ARROWS].value > 0:
                     new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.5, deepcopy(new_state_info)))
@@ -135,7 +141,7 @@ class ValueIteration:
                 else:
                     results.append((1, deepcopy(new_state_info)))
             elif action == Actions.HIT:
-                results = [(0.9, deepcopy(new_state_info))]
+                results.append((0.9, deepcopy(new_state_info)))
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.1, deepcopy(new_state_info)))
 
