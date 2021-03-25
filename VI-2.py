@@ -78,7 +78,7 @@ class ValueIteration:
 
     def iterate(self):
         self.iteration += 1
-        print(f"Iteration : {self.iteration} " + "-" * 50)
+        print(f"iteration={self.iteration}")
         new_states = []
         for state in deepcopy(self.states):
             action_values = [self.action_value(action, state)[0] for action in state.actions]
@@ -192,9 +192,11 @@ class ValueIteration:
         elif state.pos == Positions.E:
 
             if action == Actions.LEFT:
+                results.append((0.0, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
+                results.append((0.0, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.E
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
@@ -214,9 +216,11 @@ class ValueIteration:
 
         elif state.pos == Positions.W:
             if action == Actions.RIGHT:
+                results.append((0.0, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
+                results.append((0.0, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.W
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
