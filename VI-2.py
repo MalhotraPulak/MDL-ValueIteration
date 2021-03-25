@@ -1,5 +1,7 @@
 from copy import deepcopy
 from enum import Enum
+from typing import List
+import random
 
 HEALTH = "HEALTH"
 POSITION = "POSITION"
@@ -33,7 +35,7 @@ X = 5
 arr = [1 / 2, 1, 2]
 Y = arr[X % 3]
 STEP_COST = -10 / Y
-GAMMA = 0.999
+GAMMA = 0.25
 ERROR = 0.001
 
 
@@ -43,13 +45,14 @@ class Actions(Enum):
 
 class State:
     def __init__(self, value, health, arrows, materials, mm_state, position):
-        self.value = value
-        self.actions = []
-        self.health = Health(health)
-        self.arrows = Arrows(arrows)
-        self.materials = Materials(materials)
-        self.mm_state = MMState(mm_state)
+        self.value: float = value
+        self.actions: List[Action] = []
+        self.health: Health = Health(health)
+        self.arrows: Arrows = Arrows(arrows)
+        self.materials: Materials = Materials(materials)
+        self.mm_state: MMState = MMState(mm_state)
         self.pos: Positions = Positions(position)
+        self.favoured_action: Actions = Actions.NONE
 
     def __str__(self):
         # return f"Pos: {self.pos.name}  Mat: {self.materials.value} Arrow: {self.arrows.value} MM: {self.mm_state.name} MM_health: {self.health.value} Value = " + "{:0.2f}".format(
@@ -74,7 +77,7 @@ class Action:
 class ValueIteration:
     def __init__(self):
         self.states: [State] = []
-        self.discount_factor: float = 0.2
+        self.discount_factor: float = GAMMA
         self.iteration: int = 0
 
     def iterate(self):
@@ -82,9 +85,10 @@ class ValueIteration:
         print(f"Iteration : {self.iteration} " + "-" * 50)
         new_states = []
         for state in deepcopy(self.states):
-            action_values = [self.action_value(action, state) for action in state.actions]
+            action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
-            print(state, ":", state.actions[action_values.index(state.value)].type.name,
+            state.favoured_action = state.actions[action_values.index(state.value)]
+            print(state, ":", state.favoured_action.type.name,
                   "[{:0.2f}]".format(state.value),
                   end="\n")
             new_states.append(state)
@@ -95,10 +99,10 @@ class ValueIteration:
             if abs(diff) > ERROR:
                 stop = False
             total_diff += abs(diff)
-        print(total_diff)
+        # print(total_diff)
+        self.states = new_states
         if stop:
             return -1
-        self.states = new_states
         return 0
 
     def action_value(self, action: Action, state: State):
@@ -106,7 +110,7 @@ class ValueIteration:
         # result[0] is unsuccessful state, result[1:] are successful
         new_state_info = state.get_info()
         if action.type == Actions.NONE:
-            return state.value
+            return state.value, []
         if state.pos == Positions.C:
             # failed case for movements
             new_state_info[POSITION] = Positions.E
@@ -199,8 +203,10 @@ class ValueIteration:
                 results.append((0.8, deepcopy(new_state_info)))
 
         elif state.pos == Positions.W:
-
+            print("HERE")
+            print(action.type)
             if action.type == Actions.RIGHT:
+                print("HEREE")
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action.type == Actions.STAY:
@@ -232,7 +238,8 @@ class ValueIteration:
                 new_state = un_result[1]  # get the new state for unsuccessful action
                 new_state[MMSTATE] = MMState.D  # new MM state is dormant
                 new_state[ARROWS] = Arrows.A_0  # new Arrow state is 0
-                new_state[HEALTH] = Health(min(new_state[HEALTH].value + 1, len(Health) - 1))  # new health state is + 25
+                new_state[HEALTH] = Health(
+                    min(new_state[HEALTH].value + 1, len(Health) - 1))  # new health state is + 25
                 got_hit = len(final_results)  # index of action where you got hit
                 final_results.append((0.5, deepcopy(new_state)))  # this new state has 0.5 probability
             else:
@@ -241,31 +248,48 @@ class ValueIteration:
                     result_state[MMSTATE] = MMState.D
                     final_results.append((0.5 * result[0], deepcopy(result_state)))
 
-        value = 0
-        total = 0
+        value: float = 0
+        total_prob: float = 0.0
         for result in final_results:
-            total += result[0]
+            total_prob += result[0]
         # print(total)
-        assert (0.99 < total < 1.01)
+        assert (0.99 < total_prob < 1.01)
         for idx, result in enumerate(final_results):
             reward = 0
             if got_hit == idx:
-                reward = -30
+                reward = -40
             # print("value is " + str(self.getvalue(result[1])))
             STEP = STEP_COST
             # for the other task
-            if action.type == Actions.STAY:
-                STEP = 0
-            value += result[0] * (STEP + reward + GAMMA * self.getvalue(result[1]))
-        return value
+            # if action.type == Actions.STAY:
+            #     STEP = 0
+            value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
+        return value, final_results
 
-    def getvalue(self, result):
+    def getState(self, result) -> State:
         # print(result)
         idx = result[POSITION].value * (len(Materials) * len(Arrows) * len(MMState) * len(Health)) + result[
             MATERIALS].value * (len(Arrows) * len(MMState) * len(Health)) + result[ARROWS].value * len(MMState) * len(
             Health) + result[MMSTATE].value * len(Health) + result[HEALTH].value
         assert (self.states[idx].get_info() == result)
-        return self.states[idx].value
+        return self.states[idx]
+
+    def simulate(self, init_state):
+        current_state = self.getState(init_state.get_info())
+        print(current_state)
+        while current_state.health.value != 0:
+            optimal_action = current_state.favoured_action
+            possible_outcomes = self.action_value(Action(optimal_action), current_state)[1]
+            print(optimal_action, current_state, possible_outcomes)
+            actual_outcome = random.random()
+            total_prob = 0
+            for outcome in possible_outcomes:
+                total_prob += outcome[0]
+                print(total_prob, actual_outcome)
+                if total_prob > actual_outcome:
+                    current_state = self.getState(outcome[1])
+                    print(current_state)
+                    break
 
     def __str__(self):
         s = ""
@@ -313,3 +337,15 @@ vi.states = states_init
 for _ in range(100):
     if vi.iterate() == -1:
         break
+
+total: List[float] = [0, 0, 0, 0, 0]
+for st in vi.states:
+    total[st.pos.value] += st.value
+
+print("Total values by position")
+for i in range(len(Positions)):
+    print(Positions(i))
+print(total)
+
+initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value, health=Health.H_100.value)
+vi.simulate(initial_state)
