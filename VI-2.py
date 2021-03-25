@@ -35,7 +35,7 @@ X = 5
 arr = [1 / 2, 1, 2]
 Y = arr[X % 3]
 STEP_COST = -10 / Y
-GAMMA = 0.25
+GAMMA = 0.999
 ERROR = 0.001
 
 
@@ -46,7 +46,7 @@ class Actions(Enum):
 class State:
     def __init__(self, value, health, arrows, materials, mm_state, position):
         self.value: float = value
-        self.actions: List[Action] = []
+        self.actions: List[Actions] = []
         self.health: Health = Health(health)
         self.arrows: Arrows = Arrows(arrows)
         self.materials: Materials = Materials(materials)
@@ -69,11 +69,6 @@ class State:
         }
 
 
-class Action:
-    def __init__(self, action_type: Actions):
-        self.type = action_type
-
-
 class ValueIteration:
     def __init__(self):
         self.states: [State] = []
@@ -88,7 +83,7 @@ class ValueIteration:
             action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
-            print(state, ":", state.favoured_action.type.name,
+            print(state, ":", state.favoured_action.name,
                   "[{:0.2f}]".format(state.value),
                   end="\n")
             new_states.append(state)
@@ -105,55 +100,58 @@ class ValueIteration:
             return -1
         return 0
 
-    def action_value(self, action: Action, state: State):
+    def action_value(self, action: Actions, state: State):
         results = []
         # result[0] is unsuccessful state, result[1:] are successful
         new_state_info = state.get_info()
-        if action.type == Actions.NONE:
+        if action == Actions.NONE:
             return state.value, []
         if state.pos == Positions.C:
             # failed case for movements
             new_state_info[POSITION] = Positions.E
             results.append((0.15, deepcopy(new_state_info)))
-            if action.type == Actions.UP:
+            if action == Actions.UP:
                 new_state_info[POSITION] = Positions.N
                 results.append((0.85, deepcopy(new_state_info)))
-            elif action.type == Actions.DOWN:
+            elif action == Actions.DOWN:
                 new_state_info[POSITION] = Positions.S
                 results.append((0.85, deepcopy(new_state_info)))
-            elif action.type == Actions.LEFT:
+            elif action == Actions.LEFT:
                 new_state_info[POSITION] = Positions.W
                 results.append((0.85, deepcopy(new_state_info)))
-            elif action.type == Actions.RIGHT:
+            elif action == Actions.RIGHT:
                 new_state_info[POSITION] = Positions.E
                 results.append((0.85, deepcopy(new_state_info)))
-            elif action.type == Actions.STAY:
+            elif action == Actions.STAY:
                 new_state_info[POSITION] = Positions.C
                 results.append((0.85, deepcopy(new_state_info)))
-            elif action.type == Actions.SHOOT:
+            elif action == Actions.SHOOT:
                 results = []
-                new_state_info[ARROWS] = Arrows(max(0, new_state_info[ARROWS].value - 1))
-                results.append((0.5, deepcopy(new_state_info)))
-                results.append((0.5, deepcopy(new_state_info)))
-                new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
-            elif action.type == Actions.HIT:
+                if state.get_info()[ARROWS].value > 0:
+                    new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
+                    results.append((0.5, deepcopy(new_state_info)))
+                    new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
+                    results.append((0.5, deepcopy(new_state_info)))
+                else:
+                    results.append((1, deepcopy(new_state_info)))
+            elif action == Actions.HIT:
                 results = [(0.9, deepcopy(new_state_info))]
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.1, deepcopy(new_state_info)))
 
         elif state.pos == Positions.N:
-            if action.type == Actions.DOWN:
+            if action == Actions.DOWN:
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.C
                 results.append((0.85, deepcopy(new_state_info)))
-            elif action.type == Actions.STAY:
+            elif action == Actions.STAY:
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.N
                 results.append((0.85, deepcopy(new_state_info)))
 
-            elif action.type == Actions.CRAFT:
+            elif action == Actions.CRAFT:
                 if new_state_info[MATERIALS].value > 0:
                     results.append((0, deepcopy(new_state_info)))
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 1, len(Arrows) - 1))
@@ -168,56 +166,60 @@ class ValueIteration:
                     results.append((1.0, deepcopy(new_state_info)))
 
         elif state.pos == Positions.S:
-            if action.type == Actions.UP:
+            if action == Actions.UP:
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.C
                 results.append((0.85, deepcopy(new_state_info)))
-            elif action.type == Actions.STAY:
+            elif action == Actions.STAY:
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
                 new_state_info[POSITION] = Positions.S
                 results.append((0.85, deepcopy(new_state_info)))
-            elif action.type == Actions.GATHER:
+            elif action == Actions.GATHER:
                 results.append((0.25, deepcopy(new_state_info)))
                 new_state_info[MATERIALS] = Materials(min(new_state_info[MATERIALS].value + 1, len(Materials) - 1))
                 results.append((0.75, deepcopy(new_state_info)))
 
         elif state.pos == Positions.E:
 
-            if action.type == Actions.LEFT:
+            if action == Actions.LEFT:
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
-            elif action.type == Actions.STAY:
+            elif action == Actions.STAY:
                 new_state_info[POSITION] = Positions.E
                 results.append((1.0, deepcopy(new_state_info)))
-            elif action.type == Actions.SHOOT:
+            elif action == Actions.SHOOT:
                 results = []
-                new_state_info[ARROWS] = Arrows(max(0, new_state_info[ARROWS].value - 1))
-                results.append((0.1, deepcopy(new_state_info)))
-                new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
-                results.append((0.9, deepcopy(new_state_info)))
-            elif action.type == Actions.HIT:
+                if state.get_info()[ARROWS].value > 0:
+                    new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value)
+                    results.append((0.1, deepcopy(new_state_info)))
+                    new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
+                    results.append((0.9, deepcopy(new_state_info)))
+                else:
+                    results.append((1.0, deepcopy(new_state_info)))
+
+            elif action == Actions.HIT:
                 results.append((0.2, deepcopy(new_state_info)))
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.8, deepcopy(new_state_info)))
 
         elif state.pos == Positions.W:
-            print("HERE")
-            print(action.type)
-            if action.type == Actions.RIGHT:
-                print("HEREE")
+            if action == Actions.RIGHT:
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
-            elif action.type == Actions.STAY:
+            elif action == Actions.STAY:
                 new_state_info[POSITION] = Positions.W
                 results.append((1.0, deepcopy(new_state_info)))
-            elif action.type == Actions.SHOOT:
+            elif action == Actions.SHOOT:
                 results = []
-                new_state_info[ARROWS] = Arrows(max(0, new_state_info[ARROWS].value - 1))
-                results.append((0.75, deepcopy(new_state_info)))
-                new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
-                results.append((0.25, deepcopy(new_state_info)))
+                if state.get_info()[ARROWS].value > 0:
+                    new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
+                    results.append((0.75, deepcopy(new_state_info)))
+                    new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
+                    results.append((0.25, deepcopy(new_state_info)))
+                else:
+                    results.append((1.0, deepcopy(new_state_info)))
 
         final_results = []
         got_hit = -1
@@ -261,7 +263,7 @@ class ValueIteration:
             # print("value is " + str(self.getvalue(result[1])))
             STEP = STEP_COST
             # for the other task
-            # if action.type == Actions.STAY:
+            # if action == Actions.STAY:
             #     STEP = 0
             value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
         return value, final_results
@@ -276,19 +278,19 @@ class ValueIteration:
 
     def simulate(self, init_state):
         current_state = self.getState(init_state.get_info())
-        print(current_state)
+        print(current_state, current_state.favoured_action)
         while current_state.health.value != 0:
             optimal_action = current_state.favoured_action
-            possible_outcomes = self.action_value(Action(optimal_action), current_state)[1]
-            print(optimal_action, current_state, possible_outcomes)
+            possible_outcomes = self.action_value(optimal_action, current_state)[1]
+            # print(optimal_action, current_state, possible_outcomes)
             actual_outcome = random.random()
             total_prob = 0
             for outcome in possible_outcomes:
                 total_prob += outcome[0]
-                print(total_prob, actual_outcome)
                 if total_prob > actual_outcome:
+                    print("Happened", actual_outcome, outcome[1])
                     current_state = self.getState(outcome[1])
-                    print(current_state)
+                    print(current_state, current_state.favoured_action)
                     break
 
     def __str__(self):
@@ -306,29 +308,29 @@ for pos in range(len(Positions)):
             for mmst in range(len(MMState)):
                 for health in range(len(Health)):
                     state_1 = State(0, health, arrow, mat, mmst, pos)
-                    state_1.actions.append(Action(Actions.STAY))
+                    state_1.actions.append(Actions.STAY)
                     if state_1.pos == Positions.C:
-                        state_1.actions.append(Action(Actions.DOWN))
-                        state_1.actions.append(Action(Actions.UP))
-                        state_1.actions.append(Action(Actions.LEFT))
-                        state_1.actions.append(Action(Actions.RIGHT))
-                        state_1.actions.append(Action(Actions.HIT))
-                        state_1.actions.append(Action(Actions.SHOOT))
+                        state_1.actions.append(Actions.DOWN)
+                        state_1.actions.append(Actions.UP)
+                        state_1.actions.append(Actions.LEFT)
+                        state_1.actions.append(Actions.RIGHT)
+                        state_1.actions.append(Actions.HIT)
+                        state_1.actions.append(Actions.SHOOT)
                     if state_1.pos == Positions.N:
-                        state_1.actions.append(Action(Actions.DOWN))
-                        state_1.actions.append(Action(Actions.CRAFT))
+                        state_1.actions.append(Actions.DOWN)
+                        state_1.actions.append(Actions.CRAFT)
                     if state_1.pos == Positions.S:
-                        state_1.actions.append(Action(Actions.UP))
-                        state_1.actions.append(Action(Actions.GATHER))
+                        state_1.actions.append(Actions.UP)
+                        state_1.actions.append(Actions.GATHER)
                     if state_1.pos == Positions.E:
-                        state_1.actions.append(Action(Actions.LEFT))
-                        state_1.actions.append(Action(Actions.SHOOT))
-                        state_1.actions.append(Action(Actions.HIT))
+                        state_1.actions.append(Actions.LEFT)
+                        state_1.actions.append(Actions.SHOOT)
+                        state_1.actions.append(Actions.HIT)
                     if state_1.pos == Positions.W:
-                        state_1.actions.append(Action(Actions.RIGHT))
-                        state_1.actions.append(Action(Actions.SHOOT))
+                        state_1.actions.append(Actions.RIGHT)
+                        state_1.actions.append(Actions.SHOOT)
                     if state_1.health.value == 0:
-                        state_1.actions = [Action(Actions.NONE)]
+                        state_1.actions = [Actions.NONE]
                         state_1.value = 50
                     states_init.append(state_1)
 
@@ -347,5 +349,6 @@ for i in range(len(Positions)):
     print(Positions(i))
 print(total)
 
-initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value, health=Health.H_100.value)
+initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
+                      health=Health.H_100.value)
 vi.simulate(initial_state)
