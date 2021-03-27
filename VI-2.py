@@ -3,6 +3,7 @@ from enum import Enum
 from typing import List
 import random
 import json
+import sys
 
 HEALTH = "HEALTH"
 POSITION = "POSITION"
@@ -32,7 +33,7 @@ class Arrows(Enum):
     A_0, A_1, A_2, A_3 = range(4)
 
 
-X = 5
+X = 22
 arr = [1 / 2, 1, 2]
 Y = arr[X % 3]
 STEP_COST = -10 / Y
@@ -74,7 +75,7 @@ class ValueIteration:
     def __init__(self):
         self.states: [State] = []
         self.discount_factor: float = GAMMA
-        self.iteration: int = 0
+        self.iteration: int = -1
 
     def iterate(self):
         self.iteration += 1
@@ -84,9 +85,9 @@ class ValueIteration:
             action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
-            # print(state, ":", state.favoured_action.name,
-            #       "[{:0.2f}]".format(state.value),
-            #       end="\n")
+            print(str(state) + ":" + state.favoured_action.name +
+                  "=[{:0.3f}]".format(state.value),
+                  end="\n")
             new_states.append(state)
         stop = True
         max_diff = 0
@@ -95,7 +96,7 @@ class ValueIteration:
             if abs(diff) > ERROR:
                 stop = False
             max_diff = max(max_diff, abs(diff))
-        print(max_diff)
+        print(max_diff, file=sys.stderr)
         self.states = new_states
         if stop:
             return -1
@@ -290,8 +291,7 @@ class ValueIteration:
                 final_results.append((0.5 * result[0], result[1]))  # MM just remains ready
             if state.get_info()[POSITION] == Positions.C or state.get_info()[POSITION] == Positions.E:
 
-                un_result = results[0]  # get unsuccessful action
-                new_state = deepcopy(un_result[1])  # get the new state for unsuccessful action
+                new_state = deepcopy(state.get_info())  # get the new state for unsuccessful action
                 new_state[MMSTATE] = MMState.D  # new MM state is dormant
                 new_state[ARROWS] = Arrows.A_0  # new Arrow state is 0
                 new_state[HEALTH] = Health(
@@ -318,6 +318,8 @@ class ValueIteration:
             STEP = STEP_COST
             # for the other task
             # if action == Actions.STAY:
+            if result[1][HEALTH] == 0:
+                reward = 50
             #     STEP = 0
             value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
         return value, final_results
@@ -412,7 +414,7 @@ for pos in range(len(Positions)):
                         state_1.actions.append(Actions.SHOOT)
                     if state_1.health.value == 0:
                         state_1.actions = [Actions.NONE]
-                        state_1.value = 50
+                        state_1.value = 0
                     states_init.append(state_1)
 
 vi.states = states_init
@@ -420,17 +422,17 @@ vi.states = states_init
 vi.train()
 vi.load_states()
 
-total: List[float] = [0, 0, 0, 0, 0]
-for st in vi.states:
-    total[st.pos.value] += st.value
-
-print("Total values by position")
-for i in range(len(Positions)):
-    print(Positions(i))
-print(total)
-
-initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
-                      health=Health.H_100.value)
-# initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
+# total: List[float] = [0, 0, 0, 0, 0]
+# for st in vi.states:
+#     total[st.pos.value] += st.value
+#
+# print("Total values by position")
+# for i in range(len(Positions)):
+#     print(Positions(i))
+# print(total)
+#
+# initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
 #                       health=Health.H_100.value)
-vi.simulate(initial_state)
+# # initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
+# #                       health=Health.H_100.value)
+# vi.simulate(initial_state)
