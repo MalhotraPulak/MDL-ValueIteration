@@ -82,6 +82,7 @@ class ValueIteration:
         print(f"iteration={self.iteration}")
         new_states = []
         for state in deepcopy(self.states):
+            print("Deciding optimal action for", str(state))
             action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
@@ -104,6 +105,7 @@ class ValueIteration:
 
     def action_value(self, action: Actions, state: State):
         results = []
+        print(action.name)
         # result[0] is unsuccessful state, result[1:] are successful
         new_state_info = state.get_info()
         if action == Actions.NONE:
@@ -310,6 +312,7 @@ class ValueIteration:
             total_prob += result[0]
         # print(total)
         assert (0.99 < total_prob < 1.01)
+
         for idx, result in enumerate(final_results):
             reward = 0
             if got_hit == idx:
@@ -318,10 +321,13 @@ class ValueIteration:
             STEP = STEP_COST
             # for the other task
             # if action == Actions.STAY:
-            if result[1][HEALTH] == 0:
+            print(result[1])
+            if result[1][HEALTH].value == 0:
                 reward = 50
             #     STEP = 0
+            print("{:0.3f}".format(result[0]) + f", state={self.getState(result[1])}")
             value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
+        print(value)
         return value, final_results
 
     @classmethod
@@ -347,18 +353,19 @@ class ValueIteration:
             actual_outcome = random.random()
             total_prob = 0
             for out in possible_outcomes:
-                print("{:0.2f}".format(out[0]), self.getState(out[1]))
+                print("{:0.3f}".format(out[0]), self.getState(out[1]))
             for idx, outcome in enumerate(possible_outcomes):
                 total_prob += outcome[0]
                 if total_prob > actual_outcome:
                     current_state = self.getState(outcome[1])
-                    print("Selected Outcome:", idx, "Rolled", "{:0.2f}".format(actual_outcome))
+                    print("Selected Outcome:", idx, "Rolled", "{:0.3f}".format(actual_outcome))
                     print(current_state, current_state.favoured_action)
                     break
 
     def train(self):
         while self.iterate() != -1:
-            pass
+            break
+        print(f"iteration={self.iteration}", file=sys.stderr)
         self.dump_states()
 
     def dump_states(self):
@@ -420,7 +427,7 @@ for pos in range(len(Positions)):
 vi.states = states_init
 
 vi.train()
-vi.load_states()
+# vi.load_states()
 
 # total: List[float] = [0, 0, 0, 0, 0]
 # for st in vi.states:
