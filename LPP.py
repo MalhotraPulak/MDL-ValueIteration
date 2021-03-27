@@ -103,85 +103,65 @@ class ValueIteration:
 
     def action_value(self, action: Actions, state: State):
         results = []
+        # REMOVING SELF LOOPING TRANSITIONS
         # result[0] is unsuccessful state, result[1:] are successful
         new_state_info = state.get_info()
         if action == Actions.NONE:
             return state.value, []
         if state.pos == Positions.C:
             if action == Actions.UP:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.N
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.DOWN:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.S
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.LEFT:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.W
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.RIGHT:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
                 if state.get_info()[ARROWS].value > 0:
-                    # unsuccessful
                     new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.5, deepcopy(new_state_info)))
-                    # successful
                     new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
                     results.append((0.5, deepcopy(new_state_info)))
                 else:
-                    # unsuccessful
                     results.append((1, deepcopy(new_state_info)))
             elif action == Actions.HIT:
-                # unsuccessful
                 results.append((0.9, deepcopy(new_state_info)))
-                # successful
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.1, deepcopy(new_state_info)))
 
         elif state.pos == Positions.N:
             if action == Actions.DOWN:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.N
                 results.append((0.85, deepcopy(new_state_info)))
 
             elif action == Actions.CRAFT:
                 if new_state_info[MATERIALS].value > 0:
-                    # unsuccessful
                     results.append((0, deepcopy(new_state_info)))
-                    # successful
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 1, len(Arrows) - 1))
                     results.append((0.5, deepcopy(new_state_info)))
                     new_state_info = state.get_info()
@@ -191,44 +171,33 @@ class ValueIteration:
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 3, len(Arrows) - 1))
                     results.append((0.15, deepcopy(new_state_info)))
                 else:
-                    # unsuccessful
                     results.append((1.0, deepcopy(new_state_info)))
 
         elif state.pos == Positions.S:
             if action == Actions.UP:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
                 new_state_info[POSITION] = Positions.E
                 results.append((0.15, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.S
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.GATHER:
                 # this might be wrong
-                # unsuccessful
                 results.append((0.25, deepcopy(new_state_info)))
-                # successful
                 new_state_info[MATERIALS] = Materials(min(new_state_info[MATERIALS].value + 1, len(Materials) - 1))
                 results.append((0.75, deepcopy(new_state_info)))
 
         elif state.pos == Positions.E:
 
             if action == Actions.LEFT:
-                # unsuccessful
                 results.append((0.0, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
                 results.append((0.0, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.E
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
@@ -236,43 +205,33 @@ class ValueIteration:
                 if state.get_info()[ARROWS].value > 0:
                     new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.1, deepcopy(new_state_info)))
-                    # successful
                     new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
                     results.append((0.9, deepcopy(new_state_info)))
                 else:
                     results.append((1.0, deepcopy(new_state_info)))
 
             elif action == Actions.HIT:
-                # unsuccessful
                 results.append((0.8, deepcopy(new_state_info)))  # miss with high prob
-                # successful
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.2, deepcopy(new_state_info)))  # hit
 
         elif state.pos == Positions.W:
             if action == Actions.RIGHT:
-                # unsuccessful
                 results.append((0.0, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
                 results.append((0.0, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.W
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
                 results = []
                 if state.get_info()[ARROWS].value > 0:
-                    # unsuccessful
                     new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.75, deepcopy(new_state_info)))
-                    # successful
                     new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
                     results.append((0.25, deepcopy(new_state_info)))
                 else:
-                    # unsuccessful
                     results.append((1.0, deepcopy(new_state_info)))
 
         final_results = []
@@ -328,6 +287,9 @@ class ValueIteration:
             MATERIALS].value * (len(Arrows) * len(MMState) * len(Health)) + info[ARROWS].value * len(MMState) * len(
             Health) + info[MMSTATE].value * len(Health) + info[HEALTH].value
         return idx
+
+
+
 
     def getState(self, info) -> State:
         # print(result)
@@ -417,7 +379,7 @@ for pos in range(len(Positions)):
 
 vi.states = states_init
 
-vi.train()
+# vi.train()
 vi.load_states()
 
 total: List[float] = [0, 0, 0, 0, 0]
