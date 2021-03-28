@@ -74,6 +74,21 @@ class State:
             HEALTH: self.health,
         }
 
+    def filter(self):
+        self.actions = [action for action in self.actions if self.filter_action(action)]
+
+    def filter_action(self, action: Actions):
+        if action == Actions.SHOOT:
+            return self.arrows.value > 0
+        elif action == Actions.CRAFT:
+            return self.arrows != Arrows.A_3
+        elif action == Actions.GATHER:
+            return self.materials != Materials.M_2
+        elif action == Actions.NONE:
+            return self.health != Health.H_0
+        else:
+            return True
+
 
 class ValueIteration:
     def __init__(self):
@@ -352,25 +367,6 @@ class ValueIteration:
         assert (self.states[idx].get_info() == info)
         return self.states[idx]
 
-    def simulate(self, init_state):
-        current_state = self.getState(init_state.get_info())
-        print("Now:", current_state, current_state.favoured_action)
-        while current_state.health.value != 0:
-            optimal_action = current_state.favoured_action
-            possible_outcomes = self.action_value(optimal_action, current_state)[1]
-            # print(optimal_action, current_state, possible_outcomes)
-            actual_outcome = random.random()
-            total_prob = 0
-            for out in possible_outcomes:
-                print("{:0.3f}".format(out[0]), self.getState(out[1]))
-            for idx, outcome in enumerate(possible_outcomes):
-                total_prob += outcome[0]
-                if total_prob > actual_outcome:
-                    current_state = self.getState(outcome[1])
-                    print("Selected Outcome:", idx, "Rolled", "{:0.3f}".format(actual_outcome))
-                    print(current_state, current_state.favoured_action)
-                    break
-
     def train(self, max_iter):
         while self.iterate() != -1 and self.iteration < max_iter - 1:
             pass
@@ -431,6 +427,7 @@ for pos in range(len(Positions)):
                     if state_1.health.value == 0:
                         state_1.actions = [Actions.NONE]
                         state_1.value = 0
+                    state_1.filter()
                     states_init.append(state_1)
 
 vi.states = states_init
