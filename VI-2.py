@@ -84,8 +84,10 @@ class ValueIteration:
         for state in deepcopy(self.states):
             print("Deciding optimal action for", str(state))
             action_values = [self.action_value(action, state)[0] for action in state.actions]
-            state.value = max(action_values)
-            state.favoured_action = state.actions[action_values.index(state.value)]
+            max_action_value = max(action_values)
+            state.favoured_action = state.actions[action_values.index(max_action_value)]
+            print(state.favoured_action.name)
+            state.value = self.action_value(state.favoured_action, state, addMM=True)[0]
             print(str(state) + ":" + state.favoured_action.name +
                   "=[{:0.3f}]".format(state.value),
                   end="\n")
@@ -103,9 +105,9 @@ class ValueIteration:
             return -1
         return 0
 
-    def action_value(self, action: Actions, state: State):
+    def action_value(self, action: Actions, state: State, addMM: bool = False):
         results = []
-        print(action.name)
+        # print(action.name)
         # result[0] is unsuccessful state, result[1:] are successful
         new_state_info = state.get_info()
         if action == Actions.NONE:
@@ -280,7 +282,7 @@ class ValueIteration:
 
         final_results = []
         got_hit = -1
-        if state.get_info()[MMSTATE] == MMState.D:
+        if state.get_info()[MMSTATE] == MMState.D and addMM:
             for result in results:
                 new_state = result[1]
                 new_state[MMSTATE] = MMState.D
@@ -288,7 +290,7 @@ class ValueIteration:
                 new_state[MMSTATE] = MMState.R
                 final_results.append((0.2 * result[0], deepcopy(new_state)))
 
-        elif state.get_info()[MMSTATE] == MMState.R:
+        elif state.get_info()[MMSTATE] == MMState.R and addMM:
             for result in results:
                 final_results.append((0.5 * result[0], result[1]))  # MM just remains ready
             if state.get_info()[POSITION] == Positions.C or state.get_info()[POSITION] == Positions.E:
@@ -306,6 +308,8 @@ class ValueIteration:
                     result_state[MMSTATE] = MMState.D
                     final_results.append((0.5 * result[0], deepcopy(result_state)))
 
+        if not addMM:
+            final_results = results
         value: float = 0
         total_prob: float = 0.0
         for result in final_results:
@@ -321,13 +325,15 @@ class ValueIteration:
             STEP = STEP_COST
             # for the other task
             # if action == Actions.STAY:
-            print(result[1])
+            # print(result[1])
             if result[1][HEALTH].value == 0:
                 reward = 50
             #     STEP = 0
-            print("{:0.3f}".format(result[0]) + f", state={self.getState(result[1])}")
-            value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
-        print(value)
+            if addMM:
+                print("{:0.3f}".format(result[0]) + f", state={self.getState(result[1])} val={self.getState(result[1]).value}" )
+                pass
+            value += result[0] * (STEP + GAMMA * (reward + self.getState(result[1]).value))
+        # print(value)
         return value, final_results
 
     @classmethod
@@ -345,7 +351,7 @@ class ValueIteration:
 
     def simulate(self, init_state):
         current_state = self.getState(init_state.get_info())
-        print("Now:", current_state, current_state.favoured_action)
+        # print("Now:", current_state, current_state.favoured_action)
         while current_state.health.value != 0:
             optimal_action = current_state.favoured_action
             possible_outcomes = self.action_value(optimal_action, current_state)[1]
@@ -363,8 +369,8 @@ class ValueIteration:
                     break
 
     def train(self):
-        while self.iterate() != -1:
-            break
+        while self.iterate() != -1 and self.iteration < 1:
+            pass
         print(f"iteration={self.iteration}", file=sys.stderr)
         self.dump_states()
 
