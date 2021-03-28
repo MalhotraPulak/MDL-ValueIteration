@@ -81,11 +81,11 @@ class State:
         if action == Actions.SHOOT:
             return self.arrows.value > 0
         elif action == Actions.CRAFT:
-            return self.arrows != Arrows.A_3
+            return self.arrows != Arrows.A_3 and self.materials.value > 0
         elif action == Actions.GATHER:
             return self.materials != Materials.M_2
         elif action == Actions.NONE:
-            return self.health != Health.H_0
+            return self.health == Health.H_0
         else:
             return True
 
@@ -156,10 +156,10 @@ class ValueIteration:
             elif action == Actions.RIGHT:
                 # unsuccessful
                 new_state_info[POSITION] = Positions.E
-                results.append((0.15, deepcopy(new_state_info)))
+                results.append((1.0, deepcopy(new_state_info)))
                 # successful
-                new_state_info[POSITION] = Positions.E
-                results.append((0.85, deepcopy(new_state_info)))
+                # new_state_info[POSITION] = Positions.E
+                # results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.STAY:
                 # unsuccessful
                 new_state_info[POSITION] = Positions.E
@@ -169,7 +169,7 @@ class ValueIteration:
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
                 if state.get_info()[ARROWS].value > 0:
-                    # unsuccessful
+                    # # unsuccessful
                     new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.5, deepcopy(new_state_info)))
                     # successful
@@ -179,8 +179,8 @@ class ValueIteration:
                     # unsuccessful
                     results.append((1, deepcopy(new_state_info)))
             elif action == Actions.HIT:
-                # unsuccessful
-                results.append((0.9, deepcopy(new_state_info)))
+                # # unsuccessful
+                # results.append((0.9, deepcopy(new_state_info)))
                 # successful
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.1, deepcopy(new_state_info)))
@@ -204,7 +204,7 @@ class ValueIteration:
             elif action == Actions.CRAFT:
                 if new_state_info[MATERIALS].value > 0:
                     # unsuccessful
-                    results.append((0, deepcopy(new_state_info)))
+                    # results.append((0, deepcopy(new_state_info)))
                     # successful
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 1, len(Arrows) - 1))
                     results.append((0.5, deepcopy(new_state_info)))
@@ -236,7 +236,7 @@ class ValueIteration:
             elif action == Actions.GATHER:
                 # this might be wrong
                 # unsuccessful
-                results.append((0.25, deepcopy(new_state_info)))
+                # results.append((0.25, deepcopy(new_state_info)))
                 # successful
                 new_state_info[MATERIALS] = Materials(min(new_state_info[MATERIALS].value + 1, len(Materials) - 1))
                 results.append((0.75, deepcopy(new_state_info)))
@@ -245,13 +245,13 @@ class ValueIteration:
 
             if action == Actions.LEFT:
                 # unsuccessful
-                results.append((0.0, deepcopy(new_state_info)))
+                # results.append((0.0, deepcopy(new_state_info)))
                 # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
                 # unsuccessful
-                results.append((0.0, deepcopy(new_state_info)))
+                # results.append((0.0, deepcopy(new_state_info)))
                 # successful
                 new_state_info[POSITION] = Positions.E
                 results.append((1.0, deepcopy(new_state_info)))
@@ -268,7 +268,7 @@ class ValueIteration:
 
             elif action == Actions.HIT:
                 # unsuccessful
-                results.append((0.8, deepcopy(new_state_info)))  # miss with high prob
+                # results.append((0.8, deepcopy(new_state_info)))  # miss with high prob
                 # successful
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.2, deepcopy(new_state_info)))  # hit
@@ -276,13 +276,13 @@ class ValueIteration:
         elif state.pos == Positions.W:
             if action == Actions.RIGHT:
                 # unsuccessful
-                results.append((0.0, deepcopy(new_state_info)))
+                # results.append((0.0, deepcopy(new_state_info)))
                 # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
                 # unsuccessful
-                results.append((0.0, deepcopy(new_state_info)))
+                # results.append((0.0, deepcopy(new_state_info)))
                 # successful
                 new_state_info[POSITION] = Positions.W
                 results.append((1.0, deepcopy(new_state_info)))
@@ -332,7 +332,6 @@ class ValueIteration:
         for result in final_results:
             total_prob += result[0]
         # print(total)
-        assert (0.99 < total_prob < 1.01)
 
         for idx, result in enumerate(final_results):
             reward = 0
@@ -352,6 +351,9 @@ class ValueIteration:
             value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
         if debug:
             print(value)
+
+        for prob, res in final_results:
+            assert (res != state.get_info())
         return value, final_results
 
     @classmethod
@@ -403,7 +405,7 @@ for pos in range(len(Positions)):
             for mmst in range(len(MMState)):
                 for health in range(len(Health)):
                     state_1 = State(0, health, arrow, mat, mmst, pos)
-                    state_1.actions.append(Actions.STAY)
+                    # state_1.actions.append(Actions.STAY)
                     if state_1.pos == Positions.C:
                         state_1.actions.append(Actions.DOWN)
                         state_1.actions.append(Actions.UP)
