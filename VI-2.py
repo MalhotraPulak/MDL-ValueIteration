@@ -33,6 +33,10 @@ class Arrows(Enum):
     A_0, A_1, A_2, A_3 = range(4)
 
 
+debug = False
+if len(sys.argv) == 2 and sys.argv[1] == "d":
+    debug = True
+
 X = 22
 arr = [1 / 2, 1, 2]
 Y = arr[X % 3]
@@ -82,7 +86,8 @@ class ValueIteration:
         print(f"iteration={self.iteration}")
         new_states = []
         for state in deepcopy(self.states):
-            print("Deciding optimal action for", str(state))
+            if debug:
+                print("Deciding optimal action for", str(state))
             action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
@@ -105,7 +110,8 @@ class ValueIteration:
 
     def action_value(self, action: Actions, state: State):
         results = []
-        print(action.name)
+        if debug:
+            print(action.name)
         # result[0] is unsuccessful state, result[1:] are successful
         new_state_info = state.get_info()
         if action == Actions.NONE:
@@ -321,13 +327,16 @@ class ValueIteration:
             STEP = STEP_COST
             # for the other task
             # if action == Actions.STAY:
-            print(result[1])
+            # print(result[1])
             if result[1][HEALTH].value == 0:
                 reward = 50
             #     STEP = 0
-            print("{:0.3f}".format(result[0]) + f", state={self.getState(result[1])}")
+            if debug:
+                print("{:0.3f}".format(
+                    result[0]) + f", state={self.getState(result[1])} value={self.getState(result[1]).value}")
             value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
-        print(value)
+        if debug:
+            print(value)
         return value, final_results
 
     @classmethod
@@ -362,9 +371,9 @@ class ValueIteration:
                     print(current_state, current_state.favoured_action)
                     break
 
-    def train(self):
-        while self.iterate() != -1:
-            break
+    def train(self, max_iter):
+        while self.iterate() != -1 and self.iteration < max_iter - 1:
+            pass
         print(f"iteration={self.iteration}", file=sys.stderr)
         self.dump_states()
 
@@ -426,7 +435,7 @@ for pos in range(len(Positions)):
 
 vi.states = states_init
 
-vi.train()
+vi.train(10)
 # vi.load_states()
 
 # total: List[float] = [0, 0, 0, 0, 0]
