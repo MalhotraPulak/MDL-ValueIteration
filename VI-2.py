@@ -37,7 +37,7 @@ debug = False
 if len(sys.argv) == 2 and sys.argv[1] == "d":
     debug = True
 
-X = 22
+X = 0
 arr = [1 / 2, 1, 2]
 Y = arr[X % 3]
 STEP_COST = -10 / Y
@@ -115,7 +115,7 @@ class ValueIteration:
         # result[0] is unsuccessful state, result[1:] are successful
         new_state_info = state.get_info()
         if action == Actions.NONE:
-            return state.value, []
+            return 50, []
         if state.pos == Positions.C:
             if action == Actions.UP:
                 # unsuccessful
@@ -321,20 +321,22 @@ class ValueIteration:
 
         for idx, result in enumerate(final_results):
             reward = 0
-            if got_hit == idx:
-                reward = -40
+
             # print("value is " + str(self.getvalue(result[1])))
             STEP = STEP_COST
             # for the other task
             # if action == Actions.STAY:
             # print(result[1])
-            if result[1][HEALTH].value == 0:
-                reward = 50
+            if got_hit == idx:
+                STEP = -40
+            # if result[1][HEALTH].value == 0:
+            #     reward = 50
             #     STEP = 0
+
             if debug:
                 print("{:0.3f}".format(
                     result[0]) + f", state={self.getState(result[1])} value={self.getState(result[1]).value}")
-            value += result[0] * (STEP + reward + GAMMA * self.getState(result[1]).value)
+            value += result[0] * (STEP + GAMMA * (reward + self.getState(result[1]).value))
         if debug:
             print(value)
         return value, final_results
@@ -435,7 +437,7 @@ for pos in range(len(Positions)):
 
 vi.states = states_init
 
-vi.train(10)
+vi.train(200)
 # vi.load_states()
 
 # total: List[float] = [0, 0, 0, 0, 0]
