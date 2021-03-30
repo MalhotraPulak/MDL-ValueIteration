@@ -90,7 +90,7 @@ class State:
             return True
 
 
-class ValueIteration:
+class LPP:
     def __init__(self):
         self.states: [State] = []
         self.discount_factor: float = GAMMA
@@ -106,8 +106,7 @@ class ValueIteration:
             action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
-            print(str(state) + ":" + state.favoured_action.name +
-                  "=[{:0.3f}]".format(state.value),
+            print(str(state) + ":" + state.favoured_action.name + f"=[{state.value}]",
                   end="\n")
             new_states.append(state)
         stop = True
@@ -369,12 +368,6 @@ class ValueIteration:
         assert (self.states[idx].get_info() == info)
         return self.states[idx]
 
-    def train(self, max_iter):
-        while self.iterate() != -1 and self.iteration < max_iter - 1:
-            pass
-        print(f"iteration={self.iteration}", file=sys.stderr)
-        self.dump_states()
-
     def dump_states(self):
         with open("trained_states.txt", "w") as f:
             sts = []
@@ -431,10 +424,9 @@ for pos in range(len(Positions)):
                         state_1.value = 0
                     state_1.filter()
                     states_init.append(state_1)
-
+vi = LPP()
 vi.states = states_init
 
-vi.train(10)
 # vi.load_states()
 
 # total: List[float] = [0, 0, 0, 0, 0]
