@@ -92,7 +92,7 @@ class ValueIteration:
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
             print(str(state) + ":" + state.favoured_action.name +
-                  "=[{:0.3f}]".format(state.value),
+                  f"=[{state.value}]",
                   end="\n")
             new_states.append(state)
         stop = True
@@ -161,8 +161,8 @@ class ValueIteration:
                     new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
                     results.append((0.5, deepcopy(new_state_info)))
                 else:
+                    assert False
                     # unsuccessful
-                    results.append((1, deepcopy(new_state_info)))
             elif action == Actions.HIT:
                 # unsuccessful
                 results.append((0.9, deepcopy(new_state_info)))
@@ -229,15 +229,9 @@ class ValueIteration:
         elif state.pos == Positions.E:
 
             if action == Actions.LEFT:
-                # unsuccessful
-                results.append((0.0, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
-                results.append((0.0, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.E
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
@@ -249,8 +243,7 @@ class ValueIteration:
                     new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
                     results.append((0.9, deepcopy(new_state_info)))
                 else:
-                    results.append((1.0, deepcopy(new_state_info)))
-
+                    assert False
             elif action == Actions.HIT:
                 # unsuccessful
                 results.append((0.8, deepcopy(new_state_info)))  # miss with high prob
@@ -260,14 +253,10 @@ class ValueIteration:
 
         elif state.pos == Positions.W:
             if action == Actions.RIGHT:
-                # unsuccessful
-                results.append((0.0, deepcopy(new_state_info)))
                 # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
-                results.append((0.0, deepcopy(new_state_info)))
                 # successful
                 new_state_info[POSITION] = Positions.W
                 results.append((1.0, deepcopy(new_state_info)))
@@ -278,11 +267,10 @@ class ValueIteration:
                     new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.75, deepcopy(new_state_info)))
                     # successful
-                    new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
+                    new_state_info[HEALTH] = Health(new_state_info[HEALTH].value - 1)
                     results.append((0.25, deepcopy(new_state_info)))
                 else:
-                    # unsuccessful
-                    results.append((1.0, deepcopy(new_state_info)))
+                    assert False
 
         final_results = []
         got_hit = -1
@@ -328,6 +316,7 @@ class ValueIteration:
             # if action == Actions.STAY:
             # print(result[1])
             if got_hit == idx:
+                # print(result[1])
                 STEP = -40
             # if result[1][HEALTH].value == 0:
             #     reward = 50
@@ -416,20 +405,24 @@ for pos in range(len(Positions)):
                         state_1.actions.append(Actions.LEFT)
                         state_1.actions.append(Actions.RIGHT)
                         state_1.actions.append(Actions.HIT)
-                        state_1.actions.append(Actions.SHOOT)
+                        if arrow > 0:
+                            state_1.actions.append(Actions.SHOOT)
                     if state_1.pos == Positions.N:
                         state_1.actions.append(Actions.DOWN)
-                        state_1.actions.append(Actions.CRAFT)
+                        if mat > 0 and arrow != 3:
+                            state_1.actions.append(Actions.CRAFT)
                     if state_1.pos == Positions.S:
                         state_1.actions.append(Actions.UP)
                         state_1.actions.append(Actions.GATHER)
                     if state_1.pos == Positions.E:
                         state_1.actions.append(Actions.LEFT)
-                        state_1.actions.append(Actions.SHOOT)
+                        if arrow > 0:
+                            state_1.actions.append(Actions.SHOOT)
                         state_1.actions.append(Actions.HIT)
                     if state_1.pos == Positions.W:
                         state_1.actions.append(Actions.RIGHT)
-                        state_1.actions.append(Actions.SHOOT)
+                        if arrow > 0:
+                            state_1.actions.append(Actions.SHOOT)
                     if state_1.health.value == 0:
                         state_1.actions = [Actions.NONE]
                         state_1.value = 0
