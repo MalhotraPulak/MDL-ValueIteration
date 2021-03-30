@@ -4,6 +4,8 @@ from typing import List
 import random
 import json
 import sys
+import numpy as np
+import cvxpy as cp
 
 HEALTH = "HEALTH"
 POSITION = "POSITION"
@@ -74,6 +76,12 @@ class State:
             HEALTH: self.health,
         }
 
+    def get_number(self):
+        idx = self.pos.value * (len(Materials) * len(Arrows) * len(MMState) * len(Health)) + self.materials.value * (
+                len(Arrows) * len(MMState) * len(Health)) + self.arrows.value * len(MMState) * len(
+            Health) + self.mm_state.value * len(Health) + self.health.value
+        return idx
+
     def filter(self):
         self.actions = [action for action in self.actions if self.filter_action(action)]
 
@@ -91,36 +99,64 @@ class State:
 
 
 class LPP:
-    def __init__(self):
-        self.states: [State] = []
+    def __init__(self, states):
+        self.states: [State] = states
         self.discount_factor: float = GAMMA
         self.iteration: int = -1
+        self.dim = sum([len(st.actions) for st in self.states])
+        self.num_states = len(self.states)
+        self.r = None
+        self.a = None
+        self.alpha = None
+        self.initialize_r()
+        self.initialize_a()
+        self.initialize_alpha()
+        print(self.a)
+        bs = self.quest()
+        print(bs)
 
-    def iterate(self):
-        self.iteration += 1
-        print(f"iteration={self.iteration}")
-        new_states = []
-        for state in deepcopy(self.states):
-            if debug:
-                print("Deciding optimal action for", str(state))
-            action_values = [self.action_value(action, state)[0] for action in state.actions]
-            state.value = max(action_values)
-            state.favoured_action = state.actions[action_values.index(state.value)]
-            print(str(state) + ":" + state.favoured_action.name + f"=[{state.value}]",
-                  end="\n")
-            new_states.append(state)
-        stop = True
-        max_diff = 0
-        for idx in range(len(new_states)):
-            diff = self.states[idx].value - new_states[idx].value
-            if abs(diff) > ERROR:
-                stop = False
-            max_diff = max(max_diff, abs(diff))
-        print(max_diff, file=sys.stderr)
-        self.states = new_states
-        if stop:
-            return -1
-        return 0
+    def initialize_r(self):
+        r = np.zeros((1, self.dim))
+        count = 0
+        for i, state in enumerate(self.states):
+            for action in state.actions:
+                if action != Actions.NONE:
+                    r[0][count] = STEP_COST
+                count += 1
+        self.r = r
+
+    def initialize_a(self):
+        a = np.zeros((self.num_states, self.dim))
+        count = 0
+        for state_no, state in enumerate(self.states):
+
+            for action in state.actions:
+                a[state_no][count] += 1
+                results = self.action_value(action, state)[1]
+                for pr, st in results:
+                    a[self.getState(st).get_number()][count] -= pr
+                count += 1
+        self.a = a
+
+    def initialize_alpha(self):
+        alpha = np.zeros((self.num_states, 1))
+        alpha[self.num_states - 1][0] = 1
+
+    def quest(self):
+        x = cp.Variable((self.dim, 1), 'x')
+        constraints = [
+            cp.matmul(self.a, x) == self.alpha,
+            x >= 0
+        ]
+
+        objective = cp.Maximize(cp.matmul(self.r, x))
+        problem = cp.Problem(objective, constraints)
+
+        solution = problem.solve(verbose=True)
+        self.objective = solution
+        arr = list(x.value)
+        l = [float(val) for val in arr]
+        return l
 
     def action_value(self, action: Actions, state: State):
         results = []
@@ -368,6 +404,12 @@ class LPP:
         assert (self.states[idx].get_info() == info)
         return self.states[idx]
 
+    def train(self, max_iter):
+        while self.iterate() != -1 and self.iteration < max_iter - 1:
+            pass
+        print(f"iteration={self.iteration}", file=sys.stderr)
+        self.dump_states()
+
     def dump_states(self):
         with open("trained_states.txt", "w") as f:
             sts = []
@@ -390,7 +432,6 @@ class LPP:
         return s
 
 
-vi = ValueIteration()
 states_init = []
 for pos in range(len(Positions)):
     for mat in range(len(Materials)):
@@ -424,9 +465,9 @@ for pos in range(len(Positions)):
                         state_1.value = 0
                     state_1.filter()
                     states_init.append(state_1)
-vi = LPP()
-vi.states = states_init
 
+vi = LPP(states_init)
+# vi.train(10)
 # vi.load_states()
 
 # total: List[float] = [0, 0, 0, 0, 0]
