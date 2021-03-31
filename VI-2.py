@@ -79,7 +79,7 @@ class ValueIteration:
             action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
-            print(str(state) + ":" +
+            print(str(state) + ":" + state.favoured_action.name +
                   "=[{:0.3f}]".format(state.value),
                   end="\n")
             new_states.append(state)

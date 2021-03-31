@@ -1,7 +1,6 @@
 from copy import deepcopy
 from enum import Enum
 from typing import List
-import random
 import json
 import sys
 import numpy as np
@@ -38,13 +37,6 @@ class Arrows(Enum):
 debug = False
 if len(sys.argv) == 2 and sys.argv[1] == "d":
     debug = True
-
-X = 22
-arr = [1 / 2, 1, 2]
-Y = arr[X % 3]
-STEP_COST = -10 / Y
-GAMMA = 0.999
-ERROR = 0.001
 
 
 class Actions(Enum):
@@ -112,8 +104,7 @@ class LPP:
         self.initialize_r()
         self.initialize_a()
         self.initialize_alpha()
-        # print(self.a)
-        bs = self.quest()
+        bs = self.run_LP()
         print(bs)
 
     def initialize_r(self):
@@ -145,7 +136,7 @@ class LPP:
         alpha[self.num_states - 1][0] = 1
         self.alpha = alpha
 
-    def quest(self):
+    def run_LP(self):
         x = cp.Variable((self.dim, 1), 'x')
         print(x.shape, self.a.shape, self.alpha.shape, self.r.shape)
         constraints = [
@@ -242,20 +233,19 @@ class LPP:
 
             elif action == Actions.CRAFT:
                 if new_state_info[MATERIALS].value > 0:
-                    # unsuccessful
-                    # results.append((0, deepcopy(new_state_info)))
-                    # successful
+                    new_state_info[MATERIALS] = Materials(new_state_info[MATERIALS].value - 1)
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 1, len(Arrows) - 1))
                     results.append((0.5, deepcopy(new_state_info)))
                     new_state_info = state.get_info()
+                    new_state_info[MATERIALS] = Materials(new_state_info[MATERIALS].value - 1)
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 2, len(Arrows) - 1))
                     results.append((0.35, deepcopy(new_state_info)))
                     new_state_info = state.get_info()
+                    new_state_info[MATERIALS] = Materials(new_state_info[MATERIALS].value - 1)
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 3, len(Arrows) - 1))
                     results.append((0.15, deepcopy(new_state_info)))
                 else:
-                    # unsuccessful
-                    results.append((1.0, deepcopy(new_state_info)))
+                    assert False
 
         elif state.pos == Positions.S:
             if action == Actions.UP:
@@ -392,6 +382,9 @@ class LPP:
             print(value)
 
         for prob, res in final_results:
+            if res == state.get_info():
+                print(action)
+                print(res)
             assert (res != state.get_info())
         return value, final_results
 
@@ -408,27 +401,6 @@ class LPP:
         assert (self.states[idx].get_info() == info)
         return self.states[idx]
 
-    def train(self, max_iter):
-        while self.iterate() != -1 and self.iteration < max_iter - 1:
-            pass
-        print(f"iteration={self.iteration}", file=sys.stderr)
-        self.dump_states()
-
-    def dump_states(self):
-        with open("trained_states.txt", "w") as f:
-            sts = []
-            for idx, state in enumerate(self.states):
-                sts.append({"id": idx, "action": state.favoured_action.value, "value": state.value})
-            json.dump(sts, f)
-
-    def load_states(self):
-        with open("trained_states.txt", "r") as f:
-            sts = json.load(f)
-            for a_state in sts:
-                ste = self.states[a_state["id"]]
-                ste.value = a_state["value"]
-                ste.favoured_action = Actions(a_state["action"])
-
     def __str__(self):
         s = ""
         for ste in self.states:
@@ -436,38 +408,55 @@ class LPP:
         return s
 
 
-states_init = []
-for pos in range(len(Positions)):
-    for mat in range(len(Materials)):
-        for arrow in range(len(Arrows)):
-            for mmst in range(len(MMState)):
-                for health in range(len(Health)):
-                    state_1 = State(0, health, arrow, mat, mmst, pos)
-                    # state_1.actions.append(Actions.STAY)
-                    if state_1.pos == Positions.C:
-                        state_1.actions.append(Actions.DOWN)
-                        state_1.actions.append(Actions.UP)
-                        state_1.actions.append(Actions.LEFT)
-                        state_1.actions.append(Actions.RIGHT)
-                        state_1.actions.append(Actions.HIT)
-                        state_1.actions.append(Actions.SHOOT)
-                    if state_1.pos == Positions.N:
-                        state_1.actions.append(Actions.DOWN)
-                        state_1.actions.append(Actions.CRAFT)
-                    if state_1.pos == Positions.S:
-                        state_1.actions.append(Actions.UP)
-                        state_1.actions.append(Actions.GATHER)
-                    if state_1.pos == Positions.E:
-                        state_1.actions.append(Actions.LEFT)
-                        state_1.actions.append(Actions.SHOOT)
-                        state_1.actions.append(Actions.HIT)
-                    if state_1.pos == Positions.W:
-                        state_1.actions.append(Actions.RIGHT)
-                        state_1.actions.append(Actions.SHOOT)
-                    if state_1.health.value == 0:
-                        state_1.actions = [Actions.NONE]
-                        state_1.value = 0
-                    state_1.filter()
-                    states_init.append(state_1)
+if __name__ == "__main__":
+    debug = False
+    if len(sys.argv) == 2 and sys.argv[1] == "d":
+        debug = True
 
-LPP(states_init)
+    X = 22  # TODO change this for final_results
+    arr = [1 / 2, 1, 2]
+    Y = arr[X % 3]
+    STEP_COST = -10 / Y
+    # GAMMA = 0.25
+    GAMMA = 0.999
+    ERROR = 0.001
+
+    states_init = []
+    for pos in range(len(Positions)):
+        for mat in range(len(Materials)):
+            for arrow in range(len(Arrows)):
+                for mmst in range(len(MMState)):
+                    for health in range(len(Health)):
+                        state_1 = State(0, health, arrow, mat, mmst, pos)
+                        if state_1.pos == Positions.C:
+                            state_1.actions.append(Actions.UP)
+                            state_1.actions.append(Actions.DOWN)
+                            state_1.actions.append(Actions.LEFT)
+                            state_1.actions.append(Actions.RIGHT)
+                            state_1.actions.append(Actions.HIT)
+                            if arrow > 0:
+                                state_1.actions.append(Actions.SHOOT)
+                        if state_1.pos == Positions.N:
+                            state_1.actions.append(Actions.DOWN)
+                            if mat > 0:
+                                state_1.actions.append(Actions.CRAFT)
+                        if state_1.pos == Positions.S:
+                            state_1.actions.append(Actions.UP)
+                            state_1.actions.append(Actions.GATHER)
+                        if state_1.pos == Positions.E:
+                            state_1.actions.append(Actions.LEFT)
+                            if arrow > 0:
+                                state_1.actions.append(Actions.SHOOT)
+                            state_1.actions.append(Actions.HIT)
+                        if state_1.pos == Positions.W:
+                            state_1.actions.append(Actions.RIGHT)
+                        # state_1.actions.append(Actions.STAY)
+                        if state_1.pos == Positions.W:
+                            if arrow > 0:
+                                state_1.actions.append(Actions.SHOOT)
+                        if state_1.health.value == 0:
+                            state_1.actions = [Actions.NONE]
+                            state_1.value = 0
+                        state_1.filter()
+                        states_init.append(state_1)
+    LPP(states_init)
