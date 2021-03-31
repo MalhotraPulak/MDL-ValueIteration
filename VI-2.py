@@ -37,7 +37,7 @@ debug = False
 if len(sys.argv) == 2 and sys.argv[1] == "d":
     debug = True
 
-X = 0
+X = 5
 arr = [1 / 2, 1, 2]
 Y = arr[X % 3]
 STEP_COST = -10 / Y
@@ -188,9 +188,8 @@ class ValueIteration:
 
             elif action == Actions.CRAFT:
                 if new_state_info[MATERIALS].value > 0:
-                    # unsuccessful
-                    results.append((0, deepcopy(new_state_info)))
                     # successful
+
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 1, len(Arrows) - 1))
                     results.append((0.5, deepcopy(new_state_info)))
                     new_state_info = state.get_info()
@@ -229,6 +228,8 @@ class ValueIteration:
         elif state.pos == Positions.E:
 
             if action == Actions.LEFT:
+                # task 2 1
+                # new_state_info[POSITION] = Positions.W
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
@@ -314,6 +315,7 @@ class ValueIteration:
             STEP = STEP_COST
             # for the other task
             # if action == Actions.STAY:
+            #     STEP = 0
             # print(result[1])
             if got_hit == idx:
                 # print(result[1])
@@ -323,7 +325,7 @@ class ValueIteration:
             #     STEP = 0
 
             if debug:
-                print("{:0.3f}".format(
+                print("{:0.4f}".format(
                     result[0]) + f", state={self.getState(result[1])} value={self.getState(result[1]).value}")
             value += result[0] * (STEP + GAMMA * (reward + self.getState(result[1]).value))
         if debug:
@@ -352,6 +354,7 @@ class ValueIteration:
             # print(optimal_action, current_state, possible_outcomes)
             actual_outcome = random.random()
             total_prob = 0
+            print("Possible outcomes")
             for out in possible_outcomes:
                 print("{:0.3f}".format(out[0]), self.getState(out[1]))
             for idx, outcome in enumerate(possible_outcomes):
@@ -389,6 +392,11 @@ class ValueIteration:
             s += str(ste)
         return s
 
+    def do(self):
+        for state in self.states:
+            if state.pos == Positions.W and state.mm_state == MMState.R:
+                print(state, state.value, state.favoured_action)
+
 
 vi = ValueIteration()
 states_init = []
@@ -398,10 +406,9 @@ for pos in range(len(Positions)):
             for mmst in range(len(MMState)):
                 for health in range(len(Health)):
                     state_1 = State(0, health, arrow, mat, mmst, pos)
-                    state_1.actions.append(Actions.STAY)
                     if state_1.pos == Positions.C:
-                        state_1.actions.append(Actions.DOWN)
                         state_1.actions.append(Actions.UP)
+                        state_1.actions.append(Actions.DOWN)
                         state_1.actions.append(Actions.LEFT)
                         state_1.actions.append(Actions.RIGHT)
                         state_1.actions.append(Actions.HIT)
@@ -409,7 +416,7 @@ for pos in range(len(Positions)):
                             state_1.actions.append(Actions.SHOOT)
                     if state_1.pos == Positions.N:
                         state_1.actions.append(Actions.DOWN)
-                        if mat > 0 and arrow != 3:
+                        if mat > 0:
                             state_1.actions.append(Actions.CRAFT)
                     if state_1.pos == Positions.S:
                         state_1.actions.append(Actions.UP)
@@ -421,8 +428,11 @@ for pos in range(len(Positions)):
                         state_1.actions.append(Actions.HIT)
                     if state_1.pos == Positions.W:
                         state_1.actions.append(Actions.RIGHT)
+                    state_1.actions.append(Actions.STAY)
+                    if state_1.pos == Positions.W:
                         if arrow > 0:
                             state_1.actions.append(Actions.SHOOT)
+
                     if state_1.health.value == 0:
                         state_1.actions = [Actions.NONE]
                         state_1.value = 0
@@ -431,6 +441,9 @@ for pos in range(len(Positions)):
 vi.states = states_init
 
 vi.train(200)
+vi.load_states()
+# vi.do()
+print(STEP_COST)
 # vi.load_states()
 
 # total: List[float] = [0, 0, 0, 0, 0]
@@ -444,6 +457,6 @@ vi.train(200)
 #
 # initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
 #                       health=Health.H_100.value)
-# # initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
-# #                       health=Health.H_100.value)
+# initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
+#                       health=Health.H_100.value)
 # vi.simulate(initial_state)
