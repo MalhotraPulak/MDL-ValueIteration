@@ -104,6 +104,7 @@ class LPP:
         self.discount_factor: float = GAMMA
         self.iteration: int = -1
         self.dim = sum([len(st.actions) for st in self.states])
+        print("Dim is", self.dim)
         self.num_states = len(self.states)
         self.r = None
         self.a = None
@@ -111,7 +112,7 @@ class LPP:
         self.initialize_r()
         self.initialize_a()
         self.initialize_alpha()
-        print(self.a)
+        # print(self.a)
         bs = self.quest()
         print(bs)
 
@@ -123,6 +124,7 @@ class LPP:
                 if action != Actions.NONE:
                     r[0][count] = STEP_COST
                 count += 1
+        print(r)
         self.r = r
 
     def initialize_a(self):
@@ -141,9 +143,11 @@ class LPP:
     def initialize_alpha(self):
         alpha = np.zeros((self.num_states, 1))
         alpha[self.num_states - 1][0] = 1
+        self.alpha = alpha
 
     def quest(self):
         x = cp.Variable((self.dim, 1), 'x')
+        print(x.shape, self.a.shape, self.alpha.shape, self.r.shape)
         constraints = [
             cp.matmul(self.a, x) == self.alpha,
             x >= 0
@@ -466,21 +470,4 @@ for pos in range(len(Positions)):
                     state_1.filter()
                     states_init.append(state_1)
 
-vi = LPP(states_init)
-# vi.train(10)
-# vi.load_states()
-
-# total: List[float] = [0, 0, 0, 0, 0]
-# for st in vi.states:
-#     total[st.pos.value] += st.value
-#
-# print("Total values by position")
-# for i in range(len(Positions)):
-#     print(Positions(i))
-# print(total)
-#
-# initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
-#                       health=Health.H_100.value)
-# # initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
-# #                       health=Health.H_100.value)
-# vi.simulate(initial_state)
+LPP(states_init)

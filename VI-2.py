@@ -80,7 +80,7 @@ class ValueIteration:
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
             print(str(state) + ":" + state.favoured_action.name +
-                  f"=[{state.value}]",
+                  "=[{:0.3f}]".format(state.value),
                   end="\n")
             new_states.append(state)
         stop = True
@@ -176,19 +176,20 @@ class ValueIteration:
 
             elif action == Actions.CRAFT:
                 if new_state_info[MATERIALS].value > 0:
-                    # successful
-
+                    new_state_info[MATERIALS] = Materials(new_state_info[MATERIALS].value - 1)
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 1, len(Arrows) - 1))
                     results.append((0.5, deepcopy(new_state_info)))
                     new_state_info = state.get_info()
+                    new_state_info[MATERIALS] = Materials(new_state_info[MATERIALS].value - 1)
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 2, len(Arrows) - 1))
                     results.append((0.35, deepcopy(new_state_info)))
                     new_state_info = state.get_info()
+                    new_state_info[MATERIALS] = Materials(new_state_info[MATERIALS].value - 1)
                     new_state_info[ARROWS] = Arrows(min(new_state_info[ARROWS].value + 3, len(Arrows) - 1))
                     results.append((0.15, deepcopy(new_state_info)))
                 else:
+                    assert False
                     # unsuccessful
-                    results.append((1.0, deepcopy(new_state_info)))
 
         elif state.pos == Positions.S:
             if action == Actions.UP:
@@ -306,8 +307,9 @@ class ValueIteration:
             #     STEP = 0
             # print(result[1])
             if got_hit == idx:
+                reward = -40
                 # print(result[1])
-                STEP = -40
+                # STEP = -40
             # if result[1][HEALTH].value == 0:
             #     reward = 50
             #     STEP = 0
@@ -397,12 +399,12 @@ if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "d":
         debug = True
 
-    X = 5
+    X = 0  # TODO change this for final_results
     arr = [1 / 2, 1, 2]
     Y = arr[X % 3]
     STEP_COST = -10 / Y
-    GAMMA = 0.25
-    # GAMMA = 0.999
+    # GAMMA = 0.25
+    GAMMA = 0.999
     ERROR = 0.001
 
     states_init = []
@@ -445,7 +447,7 @@ if __name__ == "__main__":
                         states_init.append(state_1)
     vi = ValueIteration()
     vi.states = states_init
-    vi.train(200)
+    vi.train(500)
     # vi.load_states()
     # vi.do()
     # vi.load_states()
