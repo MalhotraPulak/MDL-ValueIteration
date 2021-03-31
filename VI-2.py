@@ -79,7 +79,7 @@ class ValueIteration:
             action_values = [self.action_value(action, state)[0] for action in state.actions]
             state.value = max(action_values)
             state.favoured_action = state.actions[action_values.index(state.value)]
-            print(str(state) + ":" + state.favoured_action.name +
+            print(str(state) + ":" +
                   "=[{:0.3f}]".format(state.value),
                   end="\n")
             new_states.append(state)
@@ -103,7 +103,7 @@ class ValueIteration:
         # result[0] is unsuccessful state, result[1:] are successful
         new_state_info = state.get_info()
         if action == Actions.NONE:
-            return 50, []
+            return state.value, []
         if state.pos == Positions.C:
             if action == Actions.UP:
                 # unsuccessful
@@ -301,23 +301,20 @@ class ValueIteration:
             reward = 0
 
             # print("value is " + str(self.getvalue(result[1])))
-            STEP = STEP_COST
+            step = STEP_COST
             # for the other task
             # if action == Actions.STAY:
             #     STEP = 0
-            # print(result[1])
             if got_hit == idx:
                 reward = -40
                 # print(result[1])
                 # STEP = -40
-            # if result[1][HEALTH].value == 0:
-            #     reward = 50
-            #     STEP = 0
-
+            if result[1][HEALTH].value == 0:
+                reward = 50
             if debug:
                 print("{:0.4f}".format(
                     result[0]) + f", state={self.getState(result[1])} value={self.getState(result[1]).value}")
-            value += result[0] * (STEP + GAMMA * (reward + self.getState(result[1]).value))
+            value += result[0] * (step + reward + GAMMA * self.getState(result[1]).value)
         if debug:
             print(value)
         return value, final_results
@@ -399,7 +396,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "d":
         debug = True
 
-    X = 0  # TODO change this for final_results
+    X = 22 # TODO change this for final_results
     arr = [1 / 2, 1, 2]
     Y = arr[X % 3]
     STEP_COST = -10 / Y
