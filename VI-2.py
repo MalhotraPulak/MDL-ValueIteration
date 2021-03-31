@@ -33,18 +33,6 @@ class Arrows(Enum):
     A_0, A_1, A_2, A_3 = range(4)
 
 
-debug = False
-if len(sys.argv) == 2 and sys.argv[1] == "d":
-    debug = True
-
-X = 5
-arr = [1 / 2, 1, 2]
-Y = arr[X % 3]
-STEP_COST = -10 / Y
-GAMMA = 0.999
-ERROR = 0.001
-
-
 class Actions(Enum):
     UP, LEFT, DOWN, RIGHT, STAY, SHOOT, HIT, CRAFT, GATHER, NONE = range(10)
 
@@ -396,67 +384,83 @@ class ValueIteration:
         for state in self.states:
             if state.pos == Positions.W and state.mm_state == MMState.R:
                 print(state, state.value, state.favoured_action)
+        action_array = {}
+        for action in Actions:
+            action_array[action.name] = 0
+        for state in self.states:
+            action_array[state.favoured_action.name] += 1
+        print(action_array)
 
 
-vi = ValueIteration()
-states_init = []
-for pos in range(len(Positions)):
-    for mat in range(len(Materials)):
-        for arrow in range(len(Arrows)):
-            for mmst in range(len(MMState)):
-                for health in range(len(Health)):
-                    state_1 = State(0, health, arrow, mat, mmst, pos)
-                    if state_1.pos == Positions.C:
-                        state_1.actions.append(Actions.UP)
-                        state_1.actions.append(Actions.DOWN)
-                        state_1.actions.append(Actions.LEFT)
-                        state_1.actions.append(Actions.RIGHT)
-                        state_1.actions.append(Actions.HIT)
-                        if arrow > 0:
-                            state_1.actions.append(Actions.SHOOT)
-                    if state_1.pos == Positions.N:
-                        state_1.actions.append(Actions.DOWN)
-                        if mat > 0:
-                            state_1.actions.append(Actions.CRAFT)
-                    if state_1.pos == Positions.S:
-                        state_1.actions.append(Actions.UP)
-                        state_1.actions.append(Actions.GATHER)
-                    if state_1.pos == Positions.E:
-                        state_1.actions.append(Actions.LEFT)
-                        if arrow > 0:
-                            state_1.actions.append(Actions.SHOOT)
-                        state_1.actions.append(Actions.HIT)
-                    if state_1.pos == Positions.W:
-                        state_1.actions.append(Actions.RIGHT)
-                    state_1.actions.append(Actions.STAY)
-                    if state_1.pos == Positions.W:
-                        if arrow > 0:
-                            state_1.actions.append(Actions.SHOOT)
+if __name__ == "__main__":
+    debug = False
+    if len(sys.argv) == 2 and sys.argv[1] == "d":
+        debug = True
 
-                    if state_1.health.value == 0:
-                        state_1.actions = [Actions.NONE]
-                        state_1.value = 0
-                    states_init.append(state_1)
+    X = 5
+    arr = [1 / 2, 1, 2]
+    Y = arr[X % 3]
+    STEP_COST = -10 / Y
+    GAMMA = 0.25
+    # GAMMA = 0.999
+    ERROR = 0.001
 
-vi.states = states_init
+    states_init = []
+    for pos in range(len(Positions)):
+        for mat in range(len(Materials)):
+            for arrow in range(len(Arrows)):
+                for mmst in range(len(MMState)):
+                    for health in range(len(Health)):
+                        state_1 = State(0, health, arrow, mat, mmst, pos)
+                        if state_1.pos == Positions.C:
+                            state_1.actions.append(Actions.UP)
+                            state_1.actions.append(Actions.DOWN)
+                            state_1.actions.append(Actions.LEFT)
+                            state_1.actions.append(Actions.RIGHT)
+                            state_1.actions.append(Actions.HIT)
+                            if arrow > 0:
+                                state_1.actions.append(Actions.SHOOT)
+                        if state_1.pos == Positions.N:
+                            state_1.actions.append(Actions.DOWN)
+                            if mat > 0:
+                                state_1.actions.append(Actions.CRAFT)
+                        if state_1.pos == Positions.S:
+                            state_1.actions.append(Actions.UP)
+                            state_1.actions.append(Actions.GATHER)
+                        if state_1.pos == Positions.E:
+                            state_1.actions.append(Actions.LEFT)
+                            if arrow > 0:
+                                state_1.actions.append(Actions.SHOOT)
+                            state_1.actions.append(Actions.HIT)
+                        if state_1.pos == Positions.W:
+                            state_1.actions.append(Actions.RIGHT)
+                        state_1.actions.append(Actions.STAY)
+                        if state_1.pos == Positions.W:
+                            if arrow > 0:
+                                state_1.actions.append(Actions.SHOOT)
 
-vi.train(200)
-vi.load_states()
-# vi.do()
-print(STEP_COST)
-# vi.load_states()
-
-# total: List[float] = [0, 0, 0, 0, 0]
-# for st in vi.states:
-#     total[st.pos.value] += st.value
-#
-# print("Total values by position")
-# for i in range(len(Positions)):
-#     print(Positions(i))
-# print(total)
-#
-# initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
-#                       health=Health.H_100.value)
-# initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
-#                       health=Health.H_100.value)
-# vi.simulate(initial_state)
+                        if state_1.health.value == 0:
+                            state_1.actions = [Actions.NONE]
+                            state_1.value = 0
+                        states_init.append(state_1)
+    vi = ValueIteration()
+    vi.states = states_init
+    vi.train(200)
+    # vi.load_states()
+    # vi.do()
+    # vi.load_states()
+    #
+    # total: List[float] = [0, 0, 0, 0, 0]
+    # for st in vi.states:
+    #     total[st.pos.value] += st.value
+    #
+    # print("Total values by position")
+    # for i in range(len(Positions)):
+    #     print(Positions(i))
+    # print(total)
+    #
+    # initial_state = State(value=0, position=Positions.W.value, materials=0, arrows=0, mm_state=MMState.D.value,
+    #                       health=Health.H_100.value)
+    # initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
+    #                       health=Health.H_100.value)
+    # vi.simulate(initial_state)
