@@ -101,18 +101,24 @@ class LPP:
         self.r = None
         self.a = None
         self.alpha = None
+        self.solution = None
+        self.x = None
+        self.policy = None
         self.initialize_r()
         self.initialize_a()
         self.initialize_alpha()
-        bs = self.run_LP()
-        print(bs)
+        self.run_LP()
+        self.get_solution()
+        self.make_dict()
 
     def initialize_r(self):
         r = np.zeros((1, self.dim))
         count = 0
         for i, state in enumerate(self.states):
             for action in state.actions:
-                if action != Actions.NONE:
+                if action == Actions.NONE:
+                    r[0][count] = 50
+                else:
                     r[0][count] = STEP_COST
                 count += 1
         print(r)
@@ -120,20 +126,20 @@ class LPP:
 
     def initialize_a(self):
         a = np.zeros((self.num_states, self.dim))
-        count = 0
+        action_no = 0
         for state_no, state in enumerate(self.states):
-
             for action in state.actions:
-                a[state_no][count] += 1
+                a[state_no][action_no] += 1
                 results = self.action_value(action, state)[1]
                 for pr, st in results:
-                    a[self.getState(st).get_number()][count] -= pr
-                count += 1
+                    a[self.getState(st).get_number()][action_no] -= pr
+                    a[state.get_number()][action_no] += pr
+                action_no += 1
         self.a = a
 
     def initialize_alpha(self):
-        alpha = np.zeros((self.num_states, 1))
-        alpha[self.num_states - 1][0] = 1
+        # starting probability is equal
+        alpha = np.zeros((self.num_states, 1)) + 1 / self.num_states
         self.alpha = alpha
 
     def run_LP(self):
@@ -148,10 +154,33 @@ class LPP:
         problem = cp.Problem(objective, constraints)
 
         solution = problem.solve(verbose=True)
-        self.objective = solution
-        arr = list(x.value)
-        l = [float(val) for val in arr]
-        return l
+        self.solution = solution
+        self.x = x
+
+    def get_solution(self):
+        xs = self.x.value.tolist()
+        count = 0
+        self.policy = []
+        for state in self.states:
+            action_len = len(state.actions)
+            options = xs[count: count + action_len]
+            max_arg = np.argmax(np.array(options))
+            print(options, max_arg)
+            state.favoured_action = state.actions[max_arg]
+            self.policy.append([str(state), state.favoured_action.name])
+            count += action_len
+
+    def make_dict(self):
+        import pprint
+        d = {
+            "a": self.a.tolist(),
+            "r": self.r.tolist(),
+            "x": self.x.value.tolist(),
+            "alpha": self.alpha.tolist(),
+            "policy": self.policy,
+            "objective": self.solution
+        }
+        print(d)
 
     def action_value(self, action: Actions, state: State):
         results = []
@@ -413,7 +442,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "d":
         debug = True
 
-    X = 22  # TODO change this for final_results
+    X = 5  # TODO change this for final_results
     arr = [1 / 2, 1, 2]
     Y = arr[X % 3]
     STEP_COST = -10 / Y

@@ -218,8 +218,10 @@ class ValueIteration:
 
             if action == Actions.LEFT:
                 # task 2 1
-                # new_state_info[POSITION] = Positions.W
-                new_state_info[POSITION] = Positions.C
+                if task == 1:
+                    new_state_info[POSITION] = Positions.W
+                else:
+                    new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
                 new_state_info[POSITION] = Positions.E
@@ -303,8 +305,9 @@ class ValueIteration:
             # print("value is " + str(self.getvalue(result[1])))
             step = STEP_COST
             # for the other task
-            # if action == Actions.STAY:
-            #     STEP = 0
+            if task == 2:
+                if action == Actions.STAY:
+                    step = 0
             if got_hit == idx:
                 reward = -40
                 # print(result[1])
@@ -359,14 +362,14 @@ class ValueIteration:
         self.dump_states()
 
     def dump_states(self):
-        with open("trained_states.txt", "w") as f:
+        with open(f"trained_states_{task}.txt", "w") as f:
             sts = []
             for idx, state in enumerate(self.states):
                 sts.append({"id": idx, "action": state.favoured_action.value, "value": state.value})
             json.dump(sts, f)
 
     def load_states(self):
-        with open("trained_states.txt", "r") as f:
+        with open(f"trained_states_{task}.txt", "r") as f:
             sts = json.load(f)
             for a_state in sts:
                 ste = self.states[a_state["id"]]
@@ -396,14 +399,16 @@ if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "d":
         debug = True
 
-    X = 22 # TODO change this for final_results
+    X = 5  # TODO change this for final_results
     arr = [1 / 2, 1, 2]
     Y = arr[X % 3]
     STEP_COST = -10 / Y
     # GAMMA = 0.25
     GAMMA = 0.999
     ERROR = 0.001
-
+    task = 0
+    if task == 3:
+        GAMMA = 0.25
     states_init = []
     for pos in range(len(Positions)):
         for mat in range(len(Materials)):
@@ -444,7 +449,7 @@ if __name__ == "__main__":
                         states_init.append(state_1)
     vi = ValueIteration()
     vi.states = states_init
-    vi.train(500)
+    vi.train(1000)
     # vi.load_states()
     # vi.do()
     # vi.load_states()
