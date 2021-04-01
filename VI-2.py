@@ -384,7 +384,7 @@ class ValueIteration:
 
     def do(self):
         for state in self.states:
-            if state.pos == Positions.W and state.mm_state == MMState.R:
+            if state.pos == Positions.W and state.mm_state == MMState.D:
                 print(state, state.value, state.favoured_action)
         action_array = {}
         for action in Actions:
