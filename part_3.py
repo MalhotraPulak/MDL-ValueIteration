@@ -55,7 +55,10 @@ class State:
         self.favoured_action: Actions = Actions.NONE
 
     def __str__(self):
-        return f"({self.pos.name},{self.materials.value},{self.arrows.value},{self.mm_state.name},{self.health.value * 25})"
+        return f"( {self.pos.name} , {self.materials.value} , {self.arrows.value} , {self.mm_state.name} , {self.health.value} )"
+
+    def get_tuple(self):
+        return self.pos.name, self.materials.value, self.arrows.value, self.mm_state.name, self.health.value * 25
 
     def get_info(self):
         return {
@@ -79,9 +82,7 @@ class State:
         if action == Actions.SHOOT:
             return self.arrows.value > 0
         elif action == Actions.CRAFT:
-            return self.arrows != Arrows.A_3 and self.materials.value > 0
-        elif action == Actions.GATHER:
-            return self.materials != Materials.M_2
+            return self.materials.value > 0
         elif action == Actions.NONE:
             return self.health == Health.H_0
         else:
@@ -116,6 +117,7 @@ class LPP:
             for action in state.actions:
                 got_hit, results = self.action_value(action, state)
                 for idx, (pr, st) in enumerate(results):
+                    # action -> results
                     if action != Actions.NONE:
                         if idx == got_hit:
                             r[0][count] += pr * (-40)
@@ -130,19 +132,27 @@ class LPP:
         action_no = 0
         for state_no, cur_state in enumerate(self.states):
             for action in cur_state.actions:
+                print(cur_state, action.name)
                 got_hit, results = self.action_value(action, cur_state)
+                if len(results) <= 0:
+                    print(cur_state, action)
                 assert len(results) > 0
                 for idx, (pr, next_state) in enumerate(results):
-                    a[cur_state.get_number()][action_no] += pr  # outflow
+                    a[state_no][action_no] += pr  # outflow
                     if action != Actions.NONE:
                         a[self.getState(next_state).get_number()][action_no] -= pr  # inflow
                 action_no += 1
+                assert state_no == cur_state.get_number()
         self.a = a
 
     def initialize_alpha(self):
         # starting probability is equal
-        alpha = np.zeros((self.num_states, 1)) + 1 / self.num_states
-        self.alpha = alpha
+        alpha = np.zeros((1, self.num_states))
+        start_state = State(materials=Materials.M_2, arrows=Arrows.A_3, mm_state=MMState.R,
+                            health=Health.H_100, value=0, position=Positions.C)
+        print("Start state: ", start_state, start_state.get_number())
+        alpha[0][start_state.get_number()] = 1
+        self.alpha = alpha.T
 
     def run_LP(self):
         x = cp.Variable((self.dim, 1), 'x')
@@ -162,13 +172,14 @@ class LPP:
     def get_solution(self):
         xs = self.x.value.tolist()
         count = 0
+        # xs = [1.2, 1.1, 1.4]
         self.policy = []
         for state in self.states:
             action_len = len(state.actions)
             options = xs[count: count + action_len]
             max_arg = np.argmax(np.array(options))
             state.favoured_action = state.actions[max_arg]
-            self.policy.append([str(state), state.favoured_action.name])
+            self.policy.append([state.get_tuple(), state.favoured_action.name])
             count += action_len
 
     def make_dict(self):
@@ -216,10 +227,10 @@ class LPP:
             elif action == Actions.RIGHT:
                 # unsuccessful
                 new_state_info[POSITION] = Positions.E
-                results.append((1.0, deepcopy(new_state_info)))
+                results.append((0.15, deepcopy(new_state_info)))
                 # successful
-                # new_state_info[POSITION] = Positions.E
-                # results.append((0.85, deepcopy(new_state_info)))
+                new_state_info[POSITION] = Positions.E
+                results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.STAY:
                 # unsuccessful
                 new_state_info[POSITION] = Positions.E
@@ -229,18 +240,18 @@ class LPP:
                 results.append((0.85, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
                 if state.get_info()[ARROWS].value > 0:
-                    # # unsuccessful
+                    # unsuccessful
                     new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.5, deepcopy(new_state_info)))
                     # successful
                     new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
                     results.append((0.5, deepcopy(new_state_info)))
                 else:
+                    assert False
                     # unsuccessful
-                    results.append((1, deepcopy(new_state_info)))
             elif action == Actions.HIT:
-                # # unsuccessful
-                # results.append((0.9, deepcopy(new_state_info)))
+                # unsuccessful
+                results.append((0.9, deepcopy(new_state_info)))
                 # successful
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.1, deepcopy(new_state_info)))
@@ -276,6 +287,7 @@ class LPP:
                     results.append((0.15, deepcopy(new_state_info)))
                 else:
                     assert False
+                    # unsuccessful
 
         elif state.pos == Positions.S:
             if action == Actions.UP:
@@ -295,7 +307,7 @@ class LPP:
             elif action == Actions.GATHER:
                 # this might be wrong
                 # unsuccessful
-                # results.append((0.25, deepcopy(new_state_info)))
+                results.append((0.25, deepcopy(new_state_info)))
                 # successful
                 new_state_info[MATERIALS] = Materials(min(new_state_info[MATERIALS].value + 1, len(Materials) - 1))
                 results.append((0.75, deepcopy(new_state_info)))
@@ -303,15 +315,10 @@ class LPP:
         elif state.pos == Positions.E:
 
             if action == Actions.LEFT:
-                # unsuccessful
-                # results.append((0.0, deepcopy(new_state_info)))
-                # successful
+                # task 2 1
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
-                # results.append((0.0, deepcopy(new_state_info)))
-                # successful
                 new_state_info[POSITION] = Positions.E
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.SHOOT:
@@ -323,25 +330,20 @@ class LPP:
                     new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
                     results.append((0.9, deepcopy(new_state_info)))
                 else:
-                    results.append((1.0, deepcopy(new_state_info)))
-
+                    assert False
             elif action == Actions.HIT:
                 # unsuccessful
-                # results.append((0.8, deepcopy(new_state_info)))  # miss with high prob
+                results.append((0.8, deepcopy(new_state_info)))  # miss with high prob
                 # successful
                 new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 2))
                 results.append((0.2, deepcopy(new_state_info)))  # hit
 
         elif state.pos == Positions.W:
             if action == Actions.RIGHT:
-                # unsuccessful
-                # results.append((0.0, deepcopy(new_state_info)))
                 # successful
                 new_state_info[POSITION] = Positions.C
                 results.append((1.0, deepcopy(new_state_info)))
             elif action == Actions.STAY:
-                # unsuccessful
-                # results.append((0.0, deepcopy(new_state_info)))
                 # successful
                 new_state_info[POSITION] = Positions.W
                 results.append((1.0, deepcopy(new_state_info)))
@@ -352,11 +354,10 @@ class LPP:
                     new_state_info[ARROWS] = Arrows(new_state_info[ARROWS].value - 1)
                     results.append((0.75, deepcopy(new_state_info)))
                     # successful
-                    new_state_info[HEALTH] = Health(max(0, new_state_info[HEALTH].value - 1))
+                    new_state_info[HEALTH] = Health(new_state_info[HEALTH].value - 1)
                     results.append((0.25, deepcopy(new_state_info)))
                 else:
-                    # unsuccessful
-                    results.append((1.0, deepcopy(new_state_info)))
+                    assert False
 
         final_results = []
         got_hit = -1
@@ -386,12 +387,16 @@ class LPP:
                     result_state[MMSTATE] = MMState.D
                     final_results.append((0.5 * result[0], deepcopy(result_state)))
 
+        final_final_results = []
         for prob, res in final_results:
             if res == state.get_info():
-                print(action)
-                print(res)
-            assert (res != state.get_info())
-        return got_hit, final_results
+                pass
+                # print(action)
+                # print(res)
+            else:
+                final_final_results.append((prob, res))
+        assert len(final_final_results) > 0
+        return got_hit, final_final_results
 
     @classmethod
     def getIdx(cls, info):
@@ -440,22 +445,25 @@ if __name__ == "__main__":
                             state_1.actions.append(Actions.HIT)
                             if arrow > 0:
                                 state_1.actions.append(Actions.SHOOT)
+                            state_1.actions.append(Actions.STAY)
                         if state_1.pos == Positions.N:
                             state_1.actions.append(Actions.DOWN)
                             if mat > 0:
                                 state_1.actions.append(Actions.CRAFT)
+                            state_1.actions.append(Actions.STAY)
                         if state_1.pos == Positions.S:
                             state_1.actions.append(Actions.UP)
                             state_1.actions.append(Actions.GATHER)
+                            state_1.actions.append(Actions.STAY)
                         if state_1.pos == Positions.E:
+                            state_1.actions.append(Actions.STAY)
                             state_1.actions.append(Actions.LEFT)
                             if arrow > 0:
                                 state_1.actions.append(Actions.SHOOT)
                             state_1.actions.append(Actions.HIT)
                         if state_1.pos == Positions.W:
+                            state_1.actions.append(Actions.STAY)
                             state_1.actions.append(Actions.RIGHT)
-                        # state_1.actions.append(Actions.STAY)
-                        if state_1.pos == Positions.W:
                             if arrow > 0:
                                 state_1.actions.append(Actions.SHOOT)
                         if state_1.health.value == 0:

@@ -453,7 +453,7 @@ if __name__ == "__main__":
     vi.states = states_init
     vi.train(1000)
     # vi.load_states()
-    # vi.do()
+    vi.do()
     # vi.load_states()
     #
     # total: List[float] = [0, 0, 0, 0, 0]
@@ -470,4 +470,3 @@ if __name__ == "__main__":
     # initial_state = State(value=0, position=Positions.C.value, materials=2, arrows=0, mm_state=MMState.R.value,
     #                       health=Health.H_100.value)
     # vi.simulate(initial_state)
-#
